@@ -10,16 +10,27 @@ public class PlayChess {
     private static BoardLocation blackKingLocation;
     protected static boolean whiteInCheck;
     protected static boolean blackInCheck;
-    private Stack<Command> stack;
+    private static boolean whiteTurn;
+    private static Stack<State> undoStack;
+    private static Stack<State> redoStack;
 
     public static void main(String[] args) {
         initializeBoard();
         initPTS();
         initSTP();
+        initStacks();
+        whiteTurn = true;
         Scanner scanner = new Scanner(System.in);
-        boolean whiteTurn = true;
         while(true) {
             String move = scanner.next();
+            if(move.equals("undo")) {
+                undo();
+                continue;
+            }
+            if(move.equals("redo")) {
+                redo();
+                continue;
+            }
             Piece.PieceType pieceType = determinePiece(move);
             boolean capture = determineCapture(move);
             int toRow  = determineMoveToRow(move);
@@ -37,12 +48,49 @@ public class PlayChess {
             BoardLocation moveTo = new BoardLocation(toRow, toColumn);
             boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
             if(!successful) continue;
+            redoStack.clear();
             determineChecks();
             updateMaps();
             printBoard();
             whiteTurn = !whiteTurn;
+            undoStack.push(new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn));
         }
+    }
 
+    private static boolean undo() {
+        if(undoStack.size() <= 1) {
+            System.err.println("Cannot undo any more");
+            return false;
+        }
+        State state = undoStack.pop();
+        piecesToSquares = state.piecesToSquares;
+        squaresToPieces = state.squaresToPieces;
+        board = state.board;
+        whiteKingLocation = state.whiteKingLocation;
+        blackKingLocation = state.blackKingLocation;
+        whiteInCheck = state.whiteInCheck;
+        blackInCheck = state.blackInCheck;
+        whiteTurn = state.whiteTurn;
+        redoStack.push(state);
+        return true;
+    }
+
+    private static boolean redo() {
+        if(redoStack.size() == 0) {
+            System.err.println("Cannot redo any more");
+            return false;
+        }
+        State state = redoStack.pop();
+        piecesToSquares = state.piecesToSquares;
+        squaresToPieces = state.squaresToPieces;
+        board = state.board;
+        whiteKingLocation = state.whiteKingLocation;
+        blackKingLocation = state.blackKingLocation;
+        whiteInCheck = state.whiteInCheck;
+        blackInCheck = state.blackInCheck;
+        whiteTurn = state.whiteTurn;
+        undoStack.push(state);
+        return true;
     }
 
     protected static int determineMoveToColumn(String move) {
@@ -241,6 +289,12 @@ public class PlayChess {
         }
     }
 
+    private static void initStacks() {
+        undoStack = new Stack<>();
+        redoStack = new Stack<>();
+        undoStack.push(new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, true));
+    }
+
     private static int getCoordinateRow(String chessLingo) {
         return chessLingo.charAt(0) - 96;
     }
@@ -365,10 +419,6 @@ public class PlayChess {
             System.out.print("\n");
         }
         System.out.println("   a  b  c  d  e  f  g  h");
-    }
-
-    private static class Command {
-        
     }
 
 }

@@ -44,7 +44,7 @@ public class PlayChess {
             Piece.Color color = whiteTurn ? Piece.Color.WHITE : Piece.Color.BLACK;
             Piece piece = identifyMovePiece(set, pieceType, color, move);
             if(piece == null) continue;
-            if(!piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, toRow, toColumn, capture, true)) continue;
+            if(validMove(piece, toRow, toColumn, capture, true)) continue;
             BoardLocation moveTo = new BoardLocation(toRow, toColumn);
             boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
             if(!successful) continue;
@@ -54,33 +54,65 @@ public class PlayChess {
             printBoard();
             whiteTurn = !whiteTurn;
             undoStack.push(new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn));
+            if(determineCheckMate()) {
+                String winner = (whiteTurn) ? "Black" : "White";
+                System.out.println("Checkmate! " + winner + " wins!");
+                System.out.println("Enter \"undo move\" or \"end game\"");
+                String input = scanner.nextLine().trim();
+                while(!(input.equals("undo move") || input.equals("end game"))) {
+                    System.out.println("Enter \"undo move\" or \"end game\"");
+                    input = scanner.nextLine().trim();
+                }
+                if(input.equals("undo move")) {
+                    undo();
+                    undo();
+                    continue;
+                }
+                break;
+            }
         }
     }
 
-    private static boolean undo() {
+    private static boolean validMove(Piece piece, int moveToRow, int moveToColumn, boolean capture, boolean printErrors) {
+        if(!piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, moveToRow, moveToColumn, capture, printErrors)) return false;
+        if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
+            BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
+            boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
+            if(!successful) {
+                returnToState(undoStack.peek());
+                return false;
+            }
+            determineChecks();
+            if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
+                if(printErrors) System.err.println("Illegal move: King is in check");
+                returnToState(undoStack.peek());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void undo() {
         if(undoStack.size() <= 1) {
             System.err.println("Cannot undo any more");
-            return false;
+            return;
         }
         State state = undoStack.pop();
-        piecesToSquares = state.piecesToSquares;
-        squaresToPieces = state.squaresToPieces;
-        board = state.board;
-        whiteKingLocation = state.whiteKingLocation;
-        blackKingLocation = state.blackKingLocation;
-        whiteInCheck = state.whiteInCheck;
-        blackInCheck = state.blackInCheck;
-        whiteTurn = state.whiteTurn;
+        returnToState(state);
         redoStack.push(state);
-        return true;
     }
 
-    private static boolean redo() {
+    private static void redo() {
         if(redoStack.size() == 0) {
             System.err.println("Cannot redo any more");
-            return false;
+            return;
         }
         State state = redoStack.pop();
+        returnToState(state);
+        undoStack.push(state);
+    }
+
+    private static void returnToState(State state) {
         piecesToSquares = state.piecesToSquares;
         squaresToPieces = state.squaresToPieces;
         board = state.board;
@@ -89,8 +121,6 @@ public class PlayChess {
         whiteInCheck = state.whiteInCheck;
         blackInCheck = state.blackInCheck;
         whiteTurn = state.whiteTurn;
-        undoStack.push(state);
-        return true;
     }
 
     protected static int determineMoveToColumn(String move) {
@@ -181,6 +211,15 @@ public class PlayChess {
                 }
             }
         }
+    }
+
+    private static boolean determineCheckMate() {
+        for(Piece piece : piecesToSquares.keySet()) {
+            if(!piecesToSquares.get(piece).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void initializeBoard() {
@@ -376,7 +415,7 @@ public class PlayChess {
             int currentColumn = piece.boardLocation.column;
             for(int i = 1; i <= 8; i++) {
                 for(int j = 1; j <= 8; j++) {
-                    if(piece.validMove(board, currentRow, currentColumn, i, j, true, false) || piece.validMove(board, currentRow, currentColumn, i, j, false, false)) {
+                    if(validMove(piece, i, j, true, false) || validMove(piece, i, j, false, false)) {
                         set.add(new BoardLocation(i, j));
                     }
                 }

@@ -30,6 +30,8 @@ public class Bishop extends Piece {
                 return false;
             }
         }
+        int originalRow = currentRow;
+        int originalColumn = currentColumn;
         int rowDirection;
         int columnDirection;
         rowDirection = (moveToRow - currentRow > 0) ? 1 : -1;

@@ -1,6 +1,7 @@
 package my.cool.projects;
 
 import java.util.*;
+import java.util.function.Function;
 
 public class PlayChess {
     private static HashMap<Piece, Set<BoardLocation>> piecesToSquares;
@@ -47,8 +48,8 @@ public class PlayChess {
             if(piece == null) continue;
             if(!validMove(piece, toRow, toColumn, capture, true)) continue;
             BoardLocation moveTo = new BoardLocation(toRow, toColumn);
-            boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
-            if(!successful) continue;
+            Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
+            //if(!successful) continue;
             redoStack.clear();
             determineChecks();
             updateMaps();
@@ -76,21 +77,27 @@ public class PlayChess {
         if(!piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, moveToRow, moveToColumn, capture, printErrors)) return false;
         if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
             BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
-            boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
-            if(!successful) {
-                //returnToState(undoStack.peek());
-                piece.boardLocation = savedLocation;
-                return false;
-            }
+            Function<Piece, Boolean> undo;
+            /*Piece captured = board[moveToRow][moveToColumn];
+            int currentRow = piece.boardLocation.row;
+            int currentColumn = piece.boardLocation.column;
+            undo = piece1 -> {
+                board[moveToRow][moveToColumn] = captured;
+                board[currentRow][currentColumn] = piece;
+                return true;
+            };*/
+            undo = capture ? capture(piece, moveTo) : move(piece, moveTo);
             determineChecks();
             if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
                 if(printErrors) System.err.println("Illegal move: King is in check");
                 //returnToState(undoStack.peek());
                 piece.boardLocation = savedLocation;
+                undo.apply(piece);
                 return false;
             }
             piece.boardLocation = savedLocation;
-            //returnToState(undoStack.peek());
+            undo.apply(piece);
+            return true;
         }
         return true;
     }
@@ -442,26 +449,60 @@ public class PlayChess {
         return nOfType == 1 ? returnPiece : null;
     }
 
-    private static boolean move(Piece piece, BoardLocation destination) {
-        Piece temp = piece;
+    private static Function<Piece, Boolean> move(Piece piece, BoardLocation destination) {
+        BoardLocation savedLocation = new BoardLocation(piece.boardLocation.chessLingo);
         board[piece.boardLocation.row][piece.boardLocation.column] = null;
         board[destination.row][destination.column] = piece;
         piece.boardLocation = destination;
-        //replaceOnAllMaps(temp, piece);
-        return true;
+        return piece1 -> {
+            piece.boardLocation = savedLocation;
+            board[savedLocation.row][savedLocation.column] = piece;
+            board[destination.row][destination.column] = null;
+            return true;
+        };
     }
 
-    private static boolean capture(Piece piece, BoardLocation destination) {
-        Piece temp0 = piece;
+    private static Function<Piece, Boolean> capture(Piece piece, BoardLocation destination) {
+        BoardLocation savedLocation = new BoardLocation(piece.boardLocation.chessLingo);
         Piece temp = board[destination.row][destination.column];
-        move(piece, destination);
+        //HashMap<BoardLocation, Set<Piece>> saveTempSTP = new HashMap<>();
+        Set<BoardLocation> saveTempSTP = new HashSet<>();
+        Set<BoardLocation> tempPTS = piecesToSquares.get(temp);
+        board[piece.boardLocation.row][piece.boardLocation.column] = null;
+        board[destination.row][destination.column] = piece;
+        piece.boardLocation = destination;
         piecesToSquares.remove(temp);
         for(BoardLocation boardLocation : squaresToPieces.keySet()) {
             Set<Piece> set = squaresToPieces.get(boardLocation);
-            if(set.remove(temp)) squaresToPieces.put(boardLocation, set);
+            if(set.contains(temp)) {
+                /*if(saveTempSTP.get(boardLocation) == null) {
+                    Set<Piece> nSet = new HashSet<>();
+                    nSet.add(temp);
+                    saveTempSTP.put(boardLocation, nSet);
+                }
+                else {
+                    Set<Piece> nSet = saveTempSTP.get(boardLocation);
+                    nSet.add(temp);
+                    saveTempSTP.put(boardLocation, nSet);
+                }
+                saveTempSTP.put(boardLocation, set);*/
+                saveTempSTP.add(boardLocation);
+                set.remove(temp);
+                squaresToPieces.put(boardLocation, set);
+            }
         }
-        //replaceOnAllMaps(temp0, piece);
-        return true;
+        return piece1 -> {
+            piece.boardLocation = savedLocation;
+            board[savedLocation.row][savedLocation.column] = piece;
+            board[destination.row][destination.column] = temp;
+            piecesToSquares.put(temp, tempPTS);
+            for(BoardLocation boardLocation : saveTempSTP) {
+                Set<Piece> pieces = squaresToPieces.get(boardLocation);
+                pieces.add(temp);
+                squaresToPieces.put(boardLocation, pieces);
+            }
+            return true;
+        };
     }
 
     private static void replaceOnAllMaps(Piece piece, Piece current) {

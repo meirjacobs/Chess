@@ -78,19 +78,10 @@ public class PlayChess {
         if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
             BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
             Function<Piece, Boolean> undo;
-            /*Piece captured = board[moveToRow][moveToColumn];
-            int currentRow = piece.boardLocation.row;
-            int currentColumn = piece.boardLocation.column;
-            undo = piece1 -> {
-                board[moveToRow][moveToColumn] = captured;
-                board[currentRow][currentColumn] = piece;
-                return true;
-            };*/
             undo = capture ? capture(piece, moveTo) : move(piece, moveTo);
             determineChecks();
             if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
                 if(printErrors) System.err.println("Illegal move: King is in check");
-                //returnToState(undoStack.peek());
                 piece.boardLocation = savedLocation;
                 undo.apply(piece);
                 return false;
@@ -255,22 +246,29 @@ public class PlayChess {
     }
 
     private static void determineChecks() {
-        for(Piece piece : piecesToSquares.keySet()) {
-            BoardLocation kingLocation = (piece.color == Piece.Color.WHITE) ? blackKingLocation : whiteKingLocation;
-            if(piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, kingLocation.row, kingLocation.column, true, false)) {
-                if(piece.color == Piece.Color.WHITE) {
-                    blackInCheck = true;
-                }
-                else {
-                    whiteInCheck = true;
+        //for(Piece piece : piecesToSquares.keySet()) {
+        whiteInCheck = false;
+        blackInCheck = false;
+        for(int i = 1; i <= 8; i++) {
+            for (int j = 1; j <= 8; j++) {
+                Piece piece = board[i][j];
+                if(piece == null) continue;
+                BoardLocation kingLocation = (piece.color == Piece.Color.WHITE) ? blackKingLocation : whiteKingLocation;
+                if (piece.validMove(board, i, j, kingLocation.row, kingLocation.column, true, false)) {
+                    if (piece.color == Piece.Color.WHITE) {
+                        blackInCheck = true;
+                    } else {
+                        whiteInCheck = true;
+                    }
                 }
             }
         }
+        //}
     }
 
     private static int determineCheckMateOrDraw(Piece.Color color) {
         for(Piece piece : piecesToSquares.keySet()) {
-            if(piece.color != color) {
+            if(piece.color == color) {
                 continue;
             }
             if(!piecesToSquares.get(piece).isEmpty()) {
@@ -451,13 +449,29 @@ public class PlayChess {
 
     private static Function<Piece, Boolean> move(Piece piece, BoardLocation destination) {
         BoardLocation savedLocation = new BoardLocation(piece.boardLocation.chessLingo);
+        boolean wic = whiteInCheck;
+        boolean bic = blackInCheck;
+        BoardLocation wkl = new BoardLocation(whiteKingLocation.chessLingo);
+        BoardLocation bkl = new BoardLocation(blackKingLocation.chessLingo);
         board[piece.boardLocation.row][piece.boardLocation.column] = null;
         board[destination.row][destination.column] = piece;
         piece.boardLocation = destination;
+        if(piece.pieceType.equals(Piece.PieceType.KING)) {
+            if(piece.color.equals(Piece.Color.WHITE)) {
+                whiteKingLocation = destination;
+            }
+            else {
+                blackKingLocation = destination;
+            }
+        }
         return piece1 -> {
             piece.boardLocation = savedLocation;
             board[savedLocation.row][savedLocation.column] = piece;
             board[destination.row][destination.column] = null;
+            whiteInCheck = wic;
+            blackInCheck = bic;
+            whiteKingLocation = wkl;
+            blackKingLocation = bkl;
             return true;
         };
     }
@@ -465,27 +479,27 @@ public class PlayChess {
     private static Function<Piece, Boolean> capture(Piece piece, BoardLocation destination) {
         BoardLocation savedLocation = new BoardLocation(piece.boardLocation.chessLingo);
         Piece temp = board[destination.row][destination.column];
-        //HashMap<BoardLocation, Set<Piece>> saveTempSTP = new HashMap<>();
+        boolean wic = whiteInCheck;
+        boolean bic = blackInCheck;
+        BoardLocation wkl = new BoardLocation(whiteKingLocation.chessLingo);
+        BoardLocation bkl = new BoardLocation(blackKingLocation.chessLingo);
         Set<BoardLocation> saveTempSTP = new HashSet<>();
         Set<BoardLocation> tempPTS = piecesToSquares.get(temp);
         board[piece.boardLocation.row][piece.boardLocation.column] = null;
         board[destination.row][destination.column] = piece;
         piece.boardLocation = destination;
+        if(piece.pieceType.equals(Piece.PieceType.KING)) {
+            if(piece.color.equals(Piece.Color.WHITE)) {
+                whiteKingLocation = destination;
+            }
+            else {
+                blackKingLocation = destination;
+            }
+        }
         piecesToSquares.remove(temp);
         for(BoardLocation boardLocation : squaresToPieces.keySet()) {
             Set<Piece> set = squaresToPieces.get(boardLocation);
             if(set.contains(temp)) {
-                /*if(saveTempSTP.get(boardLocation) == null) {
-                    Set<Piece> nSet = new HashSet<>();
-                    nSet.add(temp);
-                    saveTempSTP.put(boardLocation, nSet);
-                }
-                else {
-                    Set<Piece> nSet = saveTempSTP.get(boardLocation);
-                    nSet.add(temp);
-                    saveTempSTP.put(boardLocation, nSet);
-                }
-                saveTempSTP.put(boardLocation, set);*/
                 saveTempSTP.add(boardLocation);
                 set.remove(temp);
                 squaresToPieces.put(boardLocation, set);
@@ -501,6 +515,10 @@ public class PlayChess {
                 pieces.add(temp);
                 squaresToPieces.put(boardLocation, pieces);
             }
+            whiteInCheck = wic;
+            blackInCheck = bic;
+            whiteKingLocation = wkl;
+            blackKingLocation = bkl;
             return true;
         };
     }
@@ -550,7 +568,8 @@ public class PlayChess {
             int currentColumn = piece.boardLocation.column;
             for(int i = 1; i <= 8; i++) {
                 for(int j = 1; j <= 8; j++) {
-                    if(validMove(piece, i, j, true, false) || validMove(piece, i, j, false, false)) {
+                    //if(validMove(piece, i, j, true, false) || validMove(piece, i, j, false, false)) {
+                    if(piece.validMove(board, currentRow, currentColumn, i, j, true, false) || piece.validMove(board, currentRow, currentColumn, i, j, false, false)) {
                         set.add(new BoardLocation(i, j));
                     }
                 }

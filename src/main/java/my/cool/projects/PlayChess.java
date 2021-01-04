@@ -78,19 +78,19 @@ public class PlayChess {
             BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
             boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
             if(!successful) {
-                returnToState(undoStack.peek());
-                //TODO move piece back to original location
+                //returnToState(undoStack.peek());
+                piece.boardLocation = savedLocation;
                 return false;
             }
             determineChecks();
             if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
                 if(printErrors) System.err.println("Illegal move: King is in check");
-                returnToState(undoStack.peek());
-                //TODO move piece back to original location
+                //returnToState(undoStack.peek());
+                piece.boardLocation = savedLocation;
                 return false;
             }
-            //TODO move piece back to original location
-            returnToState(undoStack.peek());
+            piece.boardLocation = savedLocation;
+            //returnToState(undoStack.peek());
         }
         return true;
     }
@@ -501,6 +501,9 @@ public class PlayChess {
         HashSet<Piece> tempSet = new HashSet<>(piecesToSquares.keySet());
         for(Piece piece : tempSet) {
             Set<BoardLocation> set = piecesToSquares.get(piece);
+            if(set == null) {
+                System.out.println(piece.toString());
+            }
             set.clear();
             int currentRow = piece.boardLocation.row;
             int currentColumn = piece.boardLocation.column;

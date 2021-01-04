@@ -49,7 +49,7 @@ public abstract class Piece {
         return toString().substring(0, 2);
     }
 
-    @Override
+   /* @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -57,12 +57,12 @@ public abstract class Piece {
         return color == piece.color &&
                 boardLocation.equals(piece.boardLocation) &&
                 pieceType == piece.pieceType;
-    }
+    }*/
 
-    @Override
+   /* @Override
     public int hashCode() {
         return Objects.hash(color, boardLocation, pieceType);
-    }
+    }*/
 
     @Override
     public String toString() {

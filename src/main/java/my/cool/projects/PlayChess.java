@@ -127,7 +127,7 @@ public class PlayChess {
     }
 
     private static boolean checkmate(Scanner scanner) {
-        String winner = (whiteTurn) ? "White" : "Black";
+        String winner = (whiteTurn) ? "White" : "Black"; 
         System.out.println("Checkmate! " + winner + " wins!");
         System.out.println("Enter \"undo move\" or \"end game\"");
         String input = scanner.nextLine().trim();

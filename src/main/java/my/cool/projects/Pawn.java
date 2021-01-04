@@ -48,7 +48,7 @@ public class Pawn extends Piece {
         }
         else {
             if(board[moveToRow][moveToColumn] == null) {
-                if(printErrors) System.err.println("There is no piece in the intended capture destination");
+                if(printErrors) System.err.printf("No piece to capture on [%d, %d]\n", moveToRow, moveToColumn);
                 return false;
             }
             if(board[moveToRow][moveToColumn].color.equals(board[currentRow][currentColumn].color)) {

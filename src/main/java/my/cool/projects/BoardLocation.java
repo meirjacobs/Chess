@@ -25,6 +25,12 @@ public class BoardLocation {
         this.chessLingo = PlayChess.toChessLingo(row, column);
     }
 
+    public void setLocation(String chessLingo) {
+        this.chessLingo = chessLingo;
+        this.row = PlayChess.determineMoveToRow(chessLingo);
+        this.column = PlayChess.determineMoveToColumn(chessLingo);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -37,5 +43,10 @@ public class BoardLocation {
     @Override
     public int hashCode() {
         return Objects.hash(row, column);
+    }
+
+    @Override
+    public String toString() {
+        return chessLingo;
     }
 }

@@ -21,6 +21,10 @@ public class King extends Piece {
             }
         }
         else {
+            if(board[moveToRow][moveToColumn] == null) {
+                if(printErrors) System.err.printf("No piece to capture on [%d, %d]\n", moveToRow, moveToColumn);
+                return false;
+            }
             if(board[moveToRow][moveToColumn] != null && board[moveToRow][moveToColumn].color.equals(board[currentRow][currentColumn].color)) {
                 if(printErrors) System.err.println("Cannot capture your own piece");
                 return false;

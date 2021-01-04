@@ -1,5 +1,7 @@
 package my.cool.projects;
 
+import java.util.Objects;
+
 public abstract class Piece {
     Color color;
     BoardLocation boardLocation;
@@ -37,10 +39,29 @@ public abstract class Piece {
             return false;
         }
         if(board[currentRow][currentColumn] == null) {
-            System.err.println("No piece at current location");
+            System.err.println("No piece at [" + currentRow + ", " + currentColumn + "]");
             return false;
         }
         return true;
+    }
+
+    protected String shorthand() {
+        return toString().substring(0, 2);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Piece piece = (Piece) o;
+        return color == piece.color &&
+                boardLocation.equals(piece.boardLocation) &&
+                pieceType == piece.pieceType;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(color, boardLocation, pieceType);
     }
 
     @Override
@@ -69,6 +90,6 @@ public abstract class Piece {
             default:
                 throw new IllegalArgumentException("Illegal piece type");
         }
-        return type + postfix;
+        return type + postfix + boardLocation.chessLingo;
     }
 }

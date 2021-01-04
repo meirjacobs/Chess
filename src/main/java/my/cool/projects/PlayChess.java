@@ -72,20 +72,25 @@ public class PlayChess {
     }
 
     private static boolean validMove(Piece piece, int moveToRow, int moveToColumn, boolean capture, boolean printErrors) {
+        BoardLocation savedLocation = piece.boardLocation;
         if(!piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, moveToRow, moveToColumn, capture, printErrors)) return false;
         if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
             BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
             boolean successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
             if(!successful) {
                 returnToState(undoStack.peek());
+                //TODO move piece back to original location
                 return false;
             }
             determineChecks();
             if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
                 if(printErrors) System.err.println("Illegal move: King is in check");
                 returnToState(undoStack.peek());
+                //TODO move piece back to original location
                 return false;
             }
+            //TODO move piece back to original location
+            returnToState(undoStack.peek());
         }
         return true;
     }
@@ -96,7 +101,7 @@ public class PlayChess {
             return;
         }
         redoStack.push(undoStack.pop());
-        State state = undoStack.pop();
+        State state = undoStack.peek();
         returnToState(state);
         printBoard();
     }
@@ -438,13 +443,16 @@ public class PlayChess {
     }
 
     private static boolean move(Piece piece, BoardLocation destination) {
+        Piece temp = piece;
         board[piece.boardLocation.row][piece.boardLocation.column] = null;
         board[destination.row][destination.column] = piece;
         piece.boardLocation = destination;
+        //replaceOnAllMaps(temp, piece);
         return true;
     }
 
     private static boolean capture(Piece piece, BoardLocation destination) {
+        Piece temp0 = piece;
         Piece temp = board[destination.row][destination.column];
         move(piece, destination);
         piecesToSquares.remove(temp);
@@ -452,12 +460,46 @@ public class PlayChess {
             Set<Piece> set = squaresToPieces.get(boardLocation);
             if(set.remove(temp)) squaresToPieces.put(boardLocation, set);
         }
+        //replaceOnAllMaps(temp0, piece);
         return true;
+    }
+
+    private static void replaceOnAllMaps(Piece piece, Piece current) {
+        piecesToSquares.remove(piece);
+        Set<BoardLocation> set = new HashSet<>();
+        int currentRow = current.boardLocation.row;
+        int currentColumn = current.boardLocation.column;
+        for(int i = 1; i <= 8; i++) {
+            for(int j = 1; j <= 8; j++) {
+                if(validMove(current, i, j, true, false) || validMove(current, i, j, false, false)) {
+                    set.add(new BoardLocation(i, j));
+                }
+            }
+        }
+        piecesToSquares.put(current, set);
+        if(current.pieceType == Piece.PieceType.KING) {
+            if(current.color == Piece.Color.WHITE) {
+                whiteKingLocation = current.boardLocation;
+            }
+            else {
+                blackKingLocation = current.boardLocation;
+            }
+        }
+        for(BoardLocation boardLocation : squaresToPieces.keySet()) {
+            Set<Piece> set1 = squaresToPieces.get(boardLocation);
+            if(set1.remove(piece)) squaresToPieces.put(boardLocation, set1);
+        }
+        for(BoardLocation boardLocation : set) {
+            Set<Piece> set2 = squaresToPieces.get(boardLocation);
+            set2.add(current);
+        }
     }
 
     private static void updateMaps() {
         // go through every piece and go through all of it's potential valid squares and if it's valid add it to maps
-        for(Piece piece : piecesToSquares.keySet()) {
+        //HashMap<Piece, Set<BoardLocation>> tempMap = new HashMap<>(piecesToSquares);
+        HashSet<Piece> tempSet = new HashSet<>(piecesToSquares.keySet());
+        for(Piece piece : tempSet) {
             Set<BoardLocation> set = piecesToSquares.get(piece);
             set.clear();
             int currentRow = piece.boardLocation.row;
@@ -479,6 +521,7 @@ public class PlayChess {
                 }
             }
         }
+
         for(BoardLocation boardLocation : squaresToPieces.keySet()) {
             Set<Piece> set0 = squaresToPieces.get(boardLocation);
             set0.clear();
@@ -502,7 +545,7 @@ public class PlayChess {
                     System.out.print("  |");
                     continue;
                 }
-                System.out.printf("%2s|", board[i][j].toString());
+                System.out.printf("%2s|", board[i][j].shorthand());
             }
             System.out.print("\n");
         }

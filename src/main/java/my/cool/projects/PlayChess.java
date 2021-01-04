@@ -127,7 +127,7 @@ public class PlayChess {
     }
 
     private static boolean checkmate(Scanner scanner) {
-        String winner = (whiteTurn) ? "Black" : "White";
+        String winner = (whiteTurn) ? "White" : "Black";
         System.out.println("Checkmate! " + winner + " wins!");
         System.out.println("Enter \"undo move\" or \"end game\"");
         String input = scanner.nextLine().trim();
@@ -267,15 +267,20 @@ public class PlayChess {
     }
 
     private static int determineCheckMateOrDraw(Piece.Color color) {
-        for(Piece piece : piecesToSquares.keySet()) {
+        Set<Piece> set = new HashSet<>(piecesToSquares.keySet());
+        for(Piece piece : set) {
             if(piece.color == color) {
                 continue;
             }
-            if(!piecesToSquares.get(piece).isEmpty()) {
-                return -1;
+            for(int i = 1; i <= 8; i++) {
+                for(int j = 1; j <= 8; j++) {
+                    if(validMove(piece, i, j, true, false) || validMove(piece, i, j, false, false)) {
+                        return -1;
+                    }
+                }
             }
         }
-        if((color == Piece.Color.WHITE && !whiteInCheck) || (color == Piece.Color.BLACK && !blackInCheck)) {
+        if((color == Piece.Color.WHITE && !blackInCheck) || (color == Piece.Color.BLACK && !whiteInCheck)) {
             return 0;
         }
         return 1;

@@ -151,11 +151,14 @@ public class PlayChess {
         if((color == Piece.Color.WHITE && (whiteInCheck || !whiteCanCastle)) || (color == Piece.Color.BLACK && (blackInCheck || !blackCanCastle))) {
             return false;
         }
-        if(side != 9 && side != 10) {
+        if(side != 9 && side != 10) {// Take this part out after you know it works
             throw new IllegalArgumentException("Something went wrong");
         }
         BoardLocation king = color == Piece.Color.WHITE ? whiteKingLocation : blackKingLocation;
         BoardLocation destination = calculateCastlingDestination(side, color);
+        Piece castlingRook = determineCastlingRook(destination);
+        if(castlingRook == null) return false;
+        BoardLocation rookDestination = determineCastlingRookDestination(castlingRook);
         int direction = destination.column > king.column ? 1 : -1;
         for(int currentColumn = direction + king.column; direction <= destination.column; currentColumn += direction) {
             if(board[king.row][currentColumn] != null) {
@@ -169,11 +172,19 @@ public class PlayChess {
                 return false;
             }
         }
+        Piece theKing = board[king.row][king.column];
+        board[destination.row][destination.column] = theKing;
+        theKing.boardLocation = destination;
+        board[king.row][king.column] = null;
+        board[castlingRook.boardLocation.row][castlingRook.boardLocation.column] = null;
+        board[rookDestination.row][rookDestination.column] = castlingRook;
+        castlingRook.boardLocation = rookDestination;
         return true;
     }
 
     private static BoardLocation calculateCastlingDestination(int side, Piece.Color color) {
-        BoardLocation destination;
+        return side == 9 ? color == Piece.Color.WHITE ? new BoardLocation("g1") : new BoardLocation("g8") : color == Piece.Color.WHITE ? new BoardLocation("c1") : new BoardLocation("c8");
+        /*BoardLocation destination;
         if(side == 9) {
             if(color == Piece.Color.WHITE) {
                 destination = new BoardLocation("g1");
@@ -190,7 +201,46 @@ public class PlayChess {
                 destination = new BoardLocation("c8");
             }
         }
-        return destination;
+        return destination;*/
+    }
+
+    private static Piece determineCastlingRook(BoardLocation destination) {
+        if(destination.row == 1) {
+            if(destination.column == 7) {
+                return board[1][8];
+            }
+            if(destination.column == 3) {
+                return board[1][1];
+            }
+        }
+        if(destination.row == 8) {
+            if(destination.column == 7) {
+                return board[8][8];
+            }
+            if(destination.column == 3) {
+                return board[8][1];
+            }
+        }
+        return null;
+    }
+
+    private static BoardLocation determineCastlingRookDestination(Piece rook) {
+        if(rook.boardLocation.row == 1) {
+            if(rook.boardLocation.column == 1) {
+                return new BoardLocation("d1");
+            }
+            else {
+                return new BoardLocation("f1");
+            }
+        }
+        else {
+            if(rook.boardLocation.column == 1) {
+                return new BoardLocation("d8");
+            }
+            else {
+                return new BoardLocation("f8");
+            }
+        }
     }
 
     private static boolean checkmate(Scanner scanner) {

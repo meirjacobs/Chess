@@ -49,20 +49,20 @@ public abstract class Piece {
         return toString().substring(0, 2);
     }
 
-   /* @Override
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Piece piece = (Piece) o;
         return color == piece.color &&
                 boardLocation.equals(piece.boardLocation) &&
-                pieceType == piece.pieceType;
-    }*/
+                pieceType.equals(piece.pieceType);
+    }
 
-   /* @Override
+    @Override
     public int hashCode() {
-        return Objects.hash(color, boardLocation, pieceType);
-    }*/
+        return ((Objects.hash(color, boardLocation, pieceType) * 11) + 7) % 31;
+    }
 
     @Override
     public String toString() {

@@ -21,6 +21,7 @@ public class PlayChess {
         initSTP();
         initStacks();
         whiteTurn = true;
+        printBoard();
         Scanner scanner = new Scanner(System.in);
         while(true) {
             String move = scanner.next();
@@ -117,8 +118,8 @@ public class PlayChess {
 
     private static void returnToState(State state) {
         piecesToSquares = state.piecesToSquares;
-        squaresToPieces = state.squaresToPieces;
-        board = state.board;
+        initSTP();
+        fillUpBoardFromPTS();
         whiteKingLocation = state.whiteKingLocation;
         blackKingLocation = state.blackKingLocation;
         whiteInCheck = state.whiteInCheck;
@@ -126,8 +127,19 @@ public class PlayChess {
         whiteTurn = state.whiteTurn;
     }
 
+    private static void fillUpBoardFromPTS() {
+        for(int i = 0; i <= 8; i++) {
+            for(int j = 0; j <= 8; j++) {
+                board[i][j] = null;
+            }
+        }
+        for(Piece piece : piecesToSquares.keySet()) {
+            board[piece.boardLocation.row][piece.boardLocation.column] = piece;
+        }
+    }
+
     private static boolean checkmate(Scanner scanner) {
-        String winner = (whiteTurn) ? "White" : "Black"; 
+        String winner = (whiteTurn) ? "White" : "Black";
         System.out.println("Checkmate! " + winner + " wins!");
         System.out.println("Enter \"undo move\" or \"end game\"");
         String input = scanner.nextLine().trim();

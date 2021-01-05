@@ -42,7 +42,11 @@ public class PlayChess {
             int toRow  = determineMoveToRow(move);
             Piece.Color color = whiteTurn ? Piece.Color.WHITE : Piece.Color.BLACK;
             if(castlingMove) {
-                castling(toRow, color);
+                if(!castling(toRow, color)) {
+                    System.err.println("Castling unsuccessful");
+                    castlingMove = false;
+                    continue;
+                }
             }
             else {
                 int toColumn = determineMoveToColumn(move);
@@ -160,7 +164,7 @@ public class PlayChess {
         if(castlingRook == null) return false;
         BoardLocation rookDestination = determineCastlingRookDestination(castlingRook);
         int direction = destination.column > king.column ? 1 : -1;
-        for(int currentColumn = direction + king.column; direction <= destination.column; currentColumn += direction) {
+        for(int currentColumn = direction + king.column; currentColumn <= destination.column; currentColumn += direction) {
             if(board[king.row][currentColumn] != null) {
                 return false;
             }
@@ -441,6 +445,8 @@ public class PlayChess {
         blackInCheck = false;
         whiteInCheck = false;
         castlingMove = false;
+        whiteCanCastle = true;
+        blackCanCastle = true;
     }
 
     private static void initPTS() {

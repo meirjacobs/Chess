@@ -14,6 +14,9 @@ public class PlayChess {
     private static boolean whiteTurn;
     private static Stack<State> undoStack;
     private static Stack<State> redoStack;
+    private static boolean castlingMove;
+    private static boolean whiteCanCastle;
+    private static boolean blackCanCastle;
 
     public static void main(String[] args) {
         initializeBoard();
@@ -37,20 +40,25 @@ public class PlayChess {
             Piece.PieceType pieceType = determinePiece(move);
             boolean capture = determineCapture(move);
             int toRow  = determineMoveToRow(move);
-            int toColumn = determineMoveToColumn(move);
-            if(pieceType == null || toRow == -1 || toColumn == -1) continue;
-            Set<Piece> set = squaresToPieces.get(new BoardLocation(toRow, toColumn));
-            if(set.isEmpty()) {
-                System.err.printf("Piece cannot move to [%d, %d]\n", toRow, toColumn);
-                continue;
-            }
             Piece.Color color = whiteTurn ? Piece.Color.WHITE : Piece.Color.BLACK;
-            Piece piece = identifyMovePiece(set, pieceType, color, move);
-            if(piece == null) continue;
-            if(!validMove(piece, toRow, toColumn, capture, true)) continue;
-            BoardLocation moveTo = new BoardLocation(toRow, toColumn);
-            Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
-            //if(!successful) continue;
+            if(castlingMove) {
+                castling(toRow, color);
+            }
+            else {
+                int toColumn = determineMoveToColumn(move);
+                if (pieceType == null || toRow == -1 || toColumn == -1) continue;
+                Set<Piece> set = squaresToPieces.get(new BoardLocation(toRow, toColumn));
+                if (set.isEmpty()) {
+                    System.err.printf("Piece cannot move to [%d, %d]\n", toRow, toColumn);
+                    continue;
+                }
+                Piece piece = identifyMovePiece(set, pieceType, color, move);
+                if (piece == null) continue;
+                if (!validMove(piece, toRow, toColumn, capture, true)) continue;
+                BoardLocation moveTo = new BoardLocation(toRow, toColumn);
+                Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
+                //if(!successful) continue;
+            }
             redoStack.clear();
             determineChecks();
             updateMaps();
@@ -67,6 +75,7 @@ public class PlayChess {
                 }
             }
             whiteTurn = !whiteTurn;
+            castlingMove = false;
             State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
             undoStack.push(state);
             //TODO: upgrade pawns, en passant, draw by repetition, draw by insufficient material
@@ -138,6 +147,52 @@ public class PlayChess {
         }
     }
 
+    private static boolean castling(int side, Piece.Color color) {
+        if((color == Piece.Color.WHITE && (whiteInCheck || !whiteCanCastle)) || (color == Piece.Color.BLACK && (blackInCheck || !blackCanCastle))) {
+            return false;
+        }
+        if(side != 9 && side != 10) {
+            throw new IllegalArgumentException("Something went wrong");
+        }
+        BoardLocation king = color == Piece.Color.WHITE ? whiteKingLocation : blackKingLocation;
+        BoardLocation destination = calculateCastlingDestination(side, color);
+        int direction = destination.column > king.column ? 1 : -1;
+        for(int currentColumn = direction + king.column; direction <= destination.column; currentColumn += direction) {
+            if(board[king.row][currentColumn] != null) {
+                return false;
+            }
+            Set<Piece> pieces = squaresToPieces.get(new BoardLocation(king.row, currentColumn));
+            for(Piece piece : pieces) {
+                if(piece.color.equals(color)) {
+                    continue;
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static BoardLocation calculateCastlingDestination(int side, Piece.Color color) {
+        BoardLocation destination;
+        if(side == 9) {
+            if(color == Piece.Color.WHITE) {
+                destination = new BoardLocation("g1");
+            }
+            else {
+                destination = new BoardLocation("g8");
+            }
+        }
+        else {
+            if(color == Piece.Color.WHITE) {
+                destination = new BoardLocation("c1");
+            }
+            else {
+                destination = new BoardLocation("c8");
+            }
+        }
+        return destination;
+    }
+
     private static boolean checkmate(Scanner scanner) {
         String winner = (whiteTurn) ? "White" : "Black";
         System.out.println("Checkmate! " + winner + " wins!");
@@ -191,6 +246,14 @@ public class PlayChess {
     }
 
     protected static int determineMoveToRow(String move) {
+        if(move.equals("O-O")) {
+            castlingMove = true;
+            return 9;
+        }
+        if(move.equals("O-O-O")) {
+            castlingMove = true;
+            return 10;
+        }
         int row = move.charAt(move.length()-1) - 48;
         if(row < 1 || row > 8) {
             System.err.println((char)row + "is not a valid row");
@@ -235,6 +298,7 @@ public class PlayChess {
             case 'Q':
                 return Piece.PieceType.QUEEN;
             case 'K':
+            case 'O':
                 return Piece.PieceType.KING;
             default:
                 System.err.println(move.charAt(0) + " is not a valid piece");
@@ -326,6 +390,7 @@ public class PlayChess {
         }
         blackInCheck = false;
         whiteInCheck = false;
+        castlingMove = false;
     }
 
     private static void initPTS() {

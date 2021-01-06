@@ -130,7 +130,8 @@ public class PlayChess {
     }
 
     private static void returnToState(State state) {
-        piecesToSquares = state.piecesToSquares;
+        //piecesToSquares = new HashMap<>(state.piecesToSquares);
+        copyPTS(state.piecesToSquares);
         initSTP();
         fillUpBoardFromPTS();
         whiteKingLocation = state.whiteKingLocation;
@@ -138,6 +139,40 @@ public class PlayChess {
         whiteInCheck = state.whiteInCheck;
         blackInCheck = state.blackInCheck;
         whiteTurn = state.whiteTurn;
+    }
+
+    private static void copyPTS(HashMap<Piece, Set<BoardLocation>> statePTS) {
+        piecesToSquares.clear();
+        for(Piece piece : statePTS.keySet()) {
+            Set<BoardLocation> boardLocations = statePTS.get(piece);
+            Set<BoardLocation> newSet = new HashSet<>();
+            for(BoardLocation boardLocation : boardLocations) {
+                newSet.add(new BoardLocation(boardLocation.chessLingo));
+            }
+            piecesToSquares.put(copyPiece(piece), newSet);
+        }
+    }
+
+    private static Piece copyPiece(Piece piece) {
+        if(piece instanceof Bishop) {
+            return new Bishop(piece.color, piece.boardLocation);
+        }
+        if(piece instanceof King) {
+            return new King(piece.color, piece.boardLocation);
+        }
+        if(piece instanceof Knight) {
+            return new Knight(piece.color, piece.boardLocation);
+        }
+        if(piece instanceof Pawn) {
+            return new Pawn(piece.color, piece.boardLocation);
+        }
+        if(piece instanceof Queen) {
+            return new Queen(piece.color, piece.boardLocation);
+        }
+        if(piece instanceof Rook) {
+            return new Rook(piece.color, piece.boardLocation);
+        }
+        return null;
     }
 
     private static void fillUpBoardFromPTS() {
@@ -183,7 +218,17 @@ public class PlayChess {
         board[castlingRook.boardLocation.row][castlingRook.boardLocation.column] = null;
         board[rookDestination.row][rookDestination.column] = castlingRook;
         castlingRook.boardLocation = rookDestination;
+        updateKingLocation(theKing);
         return true;
+    }
+
+    private static void updateKingLocation(Piece king) {
+        if(king.color.equals(Piece.Color.WHITE)) {
+            whiteKingLocation = king.boardLocation;
+        }
+        else {
+            blackKingLocation = king.boardLocation;
+        }
     }
 
     private static BoardLocation calculateCastlingDestination(int side, Piece.Color color) {

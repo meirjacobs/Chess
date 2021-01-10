@@ -1,5 +1,7 @@
 package my.cool.projects;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.function.Function;
 
@@ -17,16 +19,26 @@ public class PlayChess {
     private static boolean castlingMove;
     private static boolean whiteCanCastle;
     private static boolean blackCanCastle;
+    private static Piece.PieceType upgradePawnTo;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         initializeBoard();
         initPTS();
         initSTP();
         initStacks();
         whiteTurn = true;
         printBoard();
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner;
+        if(args.length == 0) {
+            scanner = new Scanner(System.in);
+        }
+        else {
+            File file = new File(args[0]);
+            scanner = new Scanner(file);
+        }
         while(true) {
+            upgradePawnTo = null;
+            if(!scanner.hasNext()) break;
             String move = scanner.next();
             if(move.equals("undo")) {
                 undo();
@@ -49,7 +61,7 @@ public class PlayChess {
                 }
             }
             else {
-                int toColumn = determineMoveToColumn(move);
+                int toColumn = determineMoveToColumn(move, false);
                 if (pieceType == null || toRow == -1 || toColumn == -1) continue;
                 Set<Piece> set = squaresToPieces.get(new BoardLocation(toRow, toColumn));
                 if (set.isEmpty()) {
@@ -61,7 +73,6 @@ public class PlayChess {
                 if (!validMove(piece, toRow, toColumn, capture, true)) continue;
                 BoardLocation moveTo = new BoardLocation(toRow, toColumn);
                 Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
-                //if(!successful) continue;
             }
             redoStack.clear();
             determineChecks();
@@ -89,6 +100,10 @@ public class PlayChess {
     private static boolean validMove(Piece piece, int moveToRow, int moveToColumn, boolean capture, boolean printErrors) {
         BoardLocation savedLocation = piece.boardLocation;
         if(!piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, moveToRow, moveToColumn, capture, printErrors)) return false;
+        if(upgradePawnTo == null && piece.pieceType == Piece.PieceType.PAWN && ((piece.color.equals(Piece.Color.WHITE) && moveToRow == 8) || piece.color.equals(Piece.Color.BLACK) && moveToRow == 1)) {
+            System.err.println("Must specify which piece you're upgrading the pawn to. Use notation e.g. \"g8=Q\" or \"gxh8=Q\"");
+            return false;
+        }
         if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
             BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
             Function<Piece, Boolean> undo;
@@ -96,6 +111,21 @@ public class PlayChess {
             determineChecks();
             if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
                 if(printErrors) System.err.println("Illegal move: King is in check");
+                piece.boardLocation = savedLocation;
+                undo.apply(piece);
+                return false;
+            }
+            piece.boardLocation = savedLocation;
+            undo.apply(piece);
+            return true;
+        }
+        if(piece.pieceType.equals(Piece.PieceType.KING)) {
+            BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
+            Function<Piece, Boolean> undo;
+            undo = capture ? capture(piece, moveTo) : move(piece, moveTo);
+            determineChecks();
+            if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
+                if(printErrors) System.err.println("Illegal move: King cannot move there, it would be putting itself into check");
                 piece.boardLocation = savedLocation;
                 undo.apply(piece);
                 return false;
@@ -335,7 +365,15 @@ public class PlayChess {
         System.err.println("Invalid move");
     }
 
-    protected static int determineMoveToColumn(String move) {
+    protected static int determineMoveToColumn(String move, boolean chessLingo) {
+        if(upgradePawnTo != null && !chessLingo) {
+            int column = move.charAt(move.length()-4) - 96;
+            if(column < 1 || column > 8) {
+                System.err.println((char)column + "is not a valid column");
+                return -1;
+            }
+            return column;
+        }
         int column = move.charAt(move.length()-2) - 96;
         if(column < 1 || column > 8) {
             System.err.println((char)column + "is not a valid column");
@@ -352,6 +390,18 @@ public class PlayChess {
         if(move.equals("O-O-O")) {
             castlingMove = true;
             return 10;
+        }
+        for(int i = 0; i < move.length(); i++) {
+            if(move.charAt(i) == '=') {
+                int row = move.charAt(move.length()-3) - 48;
+                upgradePawnTo = upgradePawnPieceType(move);
+                if(upgradePawnTo == null) return -1;
+                if(row < 1 || row > 8) {
+                    System.err.println((char)row + "is not a valid row");
+                    return -1;
+                }
+                return row;
+            }
         }
         int row = move.charAt(move.length()-1) - 48;
         if(row < 1 || row > 8) {
@@ -420,8 +470,23 @@ public class PlayChess {
         return set.contains(move.charAt(1)) ? move.charAt(1) : 0;
     }
 
+    private static Piece.PieceType upgradePawnPieceType(String move) {
+        switch (move.charAt(move.length() - 1)) {
+            case 'Q':
+                return Piece.PieceType.QUEEN;
+            case 'N':
+                return Piece.PieceType.KNIGHT;
+            case 'B':
+                return Piece.PieceType.BISHOP;
+            case 'R':
+                return Piece.PieceType.ROOK;
+            default:
+                System.err.println("Invalid type of piece to upgrade the pawn to");
+                return null;
+        }
+    }
+
     private static void determineChecks() {
-        //for(Piece piece : piecesToSquares.keySet()) {
         whiteInCheck = false;
         blackInCheck = false;
         for(int i = 1; i <= 8; i++) {
@@ -492,6 +557,7 @@ public class PlayChess {
         castlingMove = false;
         whiteCanCastle = true;
         blackCanCastle = true;
+        upgradePawnTo = null;
     }
 
     private static void initPTS() {
@@ -634,9 +700,29 @@ public class PlayChess {
         BoardLocation savedLocation = new BoardLocation(piece.boardLocation.chessLingo);
         boolean wic = whiteInCheck;
         boolean bic = blackInCheck;
+        HashSet<BoardLocation> saveTempSTP = new HashSet<>();
+        Set<BoardLocation> tempPTS = null;
         BoardLocation wkl = new BoardLocation(whiteKingLocation.chessLingo);
         BoardLocation bkl = new BoardLocation(blackKingLocation.chessLingo);
-        board[piece.boardLocation.row][piece.boardLocation.column] = null;
+        Piece oldPiece = piece;
+        if(upgradePawnTo != null) {
+            Piece upgrade = upgradePawn(piece, destination);
+            if(upgrade != null) {
+                tempPTS = piecesToSquares.get(oldPiece);
+                piecesToSquares.remove(piece);
+                for(BoardLocation boardLocation : squaresToPieces.keySet()) {
+                    Set<Piece> set = squaresToPieces.get(boardLocation);
+                    if(set.contains(piece)) {
+                        saveTempSTP.add(boardLocation);
+                        set.remove(piece);
+                        squaresToPieces.put(boardLocation, set);
+                    }
+                }
+                piece = upgrade;
+                piecesToSquares.put(piece, new HashSet<>());
+            }
+        }
+        board[oldPiece.boardLocation.row][oldPiece.boardLocation.column] = null;
         board[destination.row][destination.column] = piece;
         piece.boardLocation = destination;
         if(piece.pieceType.equals(Piece.PieceType.KING)) {
@@ -647,10 +733,19 @@ public class PlayChess {
                 blackKingLocation = destination;
             }
         }
+        Set<BoardLocation> finalTempPTS = tempPTS;
         return piece1 -> {
-            piece.boardLocation = savedLocation;
-            board[savedLocation.row][savedLocation.column] = piece;
+            oldPiece.boardLocation = savedLocation;
+            board[savedLocation.row][savedLocation.column] = oldPiece;
             board[destination.row][destination.column] = null;
+            if(finalTempPTS != null) {
+                piecesToSquares.put(oldPiece, finalTempPTS);
+                for(BoardLocation boardLocation : saveTempSTP) {
+                    Set<Piece> pieces = squaresToPieces.get(boardLocation);
+                    pieces.add(oldPiece);
+                    squaresToPieces.put(boardLocation, pieces);
+                }
+            }
             whiteInCheck = wic;
             blackInCheck = bic;
             whiteKingLocation = wkl;
@@ -668,7 +763,27 @@ public class PlayChess {
         BoardLocation bkl = new BoardLocation(blackKingLocation.chessLingo);
         Set<BoardLocation> saveTempSTP = new HashSet<>();
         Set<BoardLocation> tempPTS = piecesToSquares.get(temp);
-        board[piece.boardLocation.row][piece.boardLocation.column] = null;
+        Set<BoardLocation> savePawnsSTP = new HashSet<>();
+        Set<BoardLocation> pawnsPTS = null;
+        Piece oldPiece = piece;
+        if(upgradePawnTo != null) {
+            Piece upgrade = upgradePawn(piece, destination);
+            if(upgrade != null) {
+                pawnsPTS = piecesToSquares.get(oldPiece);
+                piecesToSquares.remove(piece);
+                for(BoardLocation boardLocation : squaresToPieces.keySet()) {
+                    Set<Piece> set = squaresToPieces.get(boardLocation);
+                    if(set.contains(piece)) {
+                        savePawnsSTP.add(boardLocation);
+                        set.remove(piece);
+                        squaresToPieces.put(boardLocation, set);
+                    }
+                }
+                piece = upgrade;
+                piecesToSquares.put(piece, new HashSet<>());
+            }
+        }
+        board[oldPiece.boardLocation.row][oldPiece.boardLocation.column] = null;
         board[destination.row][destination.column] = piece;
         piece.boardLocation = destination;
         if(piece.pieceType.equals(Piece.PieceType.KING)) {
@@ -688,9 +803,10 @@ public class PlayChess {
                 squaresToPieces.put(boardLocation, set);
             }
         }
+        Set<BoardLocation> finalPawnsPTS = pawnsPTS;
         return piece1 -> {
-            piece.boardLocation = savedLocation;
-            board[savedLocation.row][savedLocation.column] = piece;
+            oldPiece.boardLocation = savedLocation;
+            board[savedLocation.row][savedLocation.column] = oldPiece;
             board[destination.row][destination.column] = temp;
             piecesToSquares.put(temp, tempPTS);
             for(BoardLocation boardLocation : saveTempSTP) {
@@ -698,12 +814,38 @@ public class PlayChess {
                 pieces.add(temp);
                 squaresToPieces.put(boardLocation, pieces);
             }
+            if(finalPawnsPTS != null) {
+                piecesToSquares.put(oldPiece, finalPawnsPTS);
+                for(BoardLocation boardLocation : savePawnsSTP) {
+                    Set<Piece> pieces = squaresToPieces.get(boardLocation);
+                    pieces.add(oldPiece);
+                    squaresToPieces.put(boardLocation, pieces);
+                }
+            }
             whiteInCheck = wic;
             blackInCheck = bic;
             whiteKingLocation = wkl;
             blackKingLocation = bkl;
             return true;
         };
+    }
+
+    private static Piece upgradePawn(Piece pawn, BoardLocation destination) {
+        if(!(pawn.pieceType.equals(Piece.PieceType.PAWN) && ((pawn.color.equals(Piece.Color.WHITE) && destination.row == 8) || (pawn.color.equals(Piece.Color.BLACK) && destination.row == 1)))) {
+            return null;
+        }
+        switch (upgradePawnTo) {
+            case QUEEN:
+                return new Queen(pawn.color, destination);
+            case KNIGHT:
+                return new Knight(pawn.color, destination);
+            case BISHOP:
+                return new Bishop(pawn.color, destination);
+            case ROOK:
+                return new Rook(pawn.color, destination);
+            default:
+                return null;
+        }
     }
 
     private static void replaceOnAllMaps(Piece piece, Piece current) {

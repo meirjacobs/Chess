@@ -16,7 +16,7 @@ public class BoardLocation {
     public BoardLocation(String chessLingo) {
         this.chessLingo = chessLingo;
         this.row = PlayChess.determineMoveToRow(chessLingo);
-        this.column = PlayChess.determineMoveToColumn(chessLingo);
+        this.column = PlayChess.determineMoveToColumn(chessLingo, true);
     }
 
     public void setLocation(int row, int column) {
@@ -28,7 +28,7 @@ public class BoardLocation {
     public void setLocation(String chessLingo) {
         this.chessLingo = chessLingo;
         this.row = PlayChess.determineMoveToRow(chessLingo);
-        this.column = PlayChess.determineMoveToColumn(chessLingo);
+        this.column = PlayChess.determineMoveToColumn(chessLingo, true);
     }
 
     @Override

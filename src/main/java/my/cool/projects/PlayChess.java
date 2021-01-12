@@ -79,6 +79,10 @@ public class PlayChess {
             updateMaps();
             printBoard();
             int result = determineCheckMateOrDraw(color);
+            whiteTurn = !whiteTurn;
+            castlingMove = false;
+            State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
+            undoStack.push(state);
             if(result == 1) {
                 if(checkmate(scanner)) {
                     break;
@@ -89,10 +93,6 @@ public class PlayChess {
                     break;
                 }
             }
-            whiteTurn = !whiteTurn;
-            castlingMove = false;
-            State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
-            undoStack.push(state);
             //TODO: upgrade pawns, en passant, draw by repetition, draw by insufficient material
         }
     }
@@ -101,7 +101,7 @@ public class PlayChess {
         BoardLocation savedLocation = piece.boardLocation;
         if(!piece.validMove(board, piece.boardLocation.row, piece.boardLocation.column, moveToRow, moveToColumn, capture, printErrors)) return false;
         if(upgradePawnTo == null && piece.pieceType == Piece.PieceType.PAWN && ((piece.color.equals(Piece.Color.WHITE) && moveToRow == 8) || piece.color.equals(Piece.Color.BLACK) && moveToRow == 1)) {
-            System.err.println("Must specify which piece you're upgrading the pawn to. Use notation e.g. \"g8=Q\" or \"gxh8=Q\"");
+            if(printErrors) System.err.println("Must specify which piece you're upgrading the pawn to. Use notation e.g. \"g8=Q\" or \"gxh8=Q\"");
             return false;
         }
         if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
@@ -229,17 +229,23 @@ public class PlayChess {
         if(castlingRook == null) return false;
         BoardLocation rookDestination = determineCastlingRookDestination(castlingRook);
         int direction = destination.column > king.column ? 1 : -1;
-        for(int currentColumn = direction + king.column; currentColumn <= destination.column; currentColumn += direction) {
+        int count = 0;
+        int currentColumn;
+        for(currentColumn = direction + king.column; count < 2; currentColumn += direction) {
             if(board[king.row][currentColumn] != null) {
                 return false;
             }
             Set<Piece> pieces = squaresToPieces.get(new BoardLocation(king.row, currentColumn));
             for(Piece piece : pieces) {
-                if(piece.color.equals(color)) {
-                    continue;
+                if(!piece.color.equals(color)) {
+                    return false;
                 }
-                return false;
             }
+            count++;
+        }
+        currentColumn += direction;
+        if(currentColumn != castlingRook.boardLocation.column && board[king.row][currentColumn] != null) {
+            return false;
         }
         Piece theKing = board[king.row][king.column];
         board[destination.row][destination.column] = theKing;

@@ -63,16 +63,24 @@ public class PlayChess {
             else {
                 int toColumn = determineMoveToColumn(move, false);
                 if (pieceType == null || toRow == -1 || toColumn == -1) continue;
-                Set<Piece> set = squaresToPieces.get(new BoardLocation(toRow, toColumn));
-                if (set.isEmpty()) {
-                    System.err.printf("Piece cannot move to [%d, %d]\n", toRow, toColumn);
-                    continue;
+                if(determineEnPassant(pieceType, toRow, toColumn)) {
+                    if(!enPassant(move, toRow, toColumn)) {
+                        continue;
+                    }
+                    // skip to after this next else statement, i don't think there's any more code to put here
                 }
-                Piece piece = identifyMovePiece(set, pieceType, color, move);
-                if (piece == null) continue;
-                if (!validMove(piece, toRow, toColumn, capture, true)) continue;
-                BoardLocation moveTo = new BoardLocation(toRow, toColumn);
-                Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
+                else {
+                    Set<Piece> set = squaresToPieces.get(new BoardLocation(toRow, toColumn));
+                    if (set.isEmpty()) {
+                        System.err.printf("Piece cannot move to [%d, %d]\n", toRow, toColumn);
+                        continue;
+                    }
+                    Piece piece = identifyMovePiece(set, pieceType, color, move);
+                    if (piece == null) continue;
+                    if (!validMove(piece, toRow, toColumn, capture, true)) continue;
+                    BoardLocation moveTo = new BoardLocation(toRow, toColumn);
+                    Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
+                }
             }
             redoStack.clear();
             determineChecks();
@@ -326,6 +334,112 @@ public class PlayChess {
                 return new BoardLocation("f8");
             }
         }
+    }
+
+    private static boolean determineEnPassant(Piece.PieceType pieceType, int moveToRow, int moveToColumn) {
+        if(!pieceType.equals(Piece.PieceType.PAWN) || !((whiteTurn && moveToRow == 6) || (!whiteTurn && moveToRow == 3)) || board[moveToRow][moveToColumn] != null) return false;
+        Piece[][] previousBoard = undoStack.peek().board;
+        int rowOfOpposingPawnPreviousLocation;
+        int rowOfOpposingPawnCurrentLocation;
+        if(whiteTurn) {
+            rowOfOpposingPawnPreviousLocation = 7;
+            rowOfOpposingPawnCurrentLocation = 5;
+        }
+        else {
+            rowOfOpposingPawnPreviousLocation = 2;
+            rowOfOpposingPawnCurrentLocation = 4;
+        }
+        Piece prev = previousBoard[rowOfOpposingPawnPreviousLocation][moveToColumn];
+        Piece curr = board[rowOfOpposingPawnCurrentLocation][moveToColumn];
+        if(prev == null || curr == null) return false;
+        if(!(prev.pieceType == Piece.PieceType.PAWN && curr.pieceType != Piece.PieceType.PAWN)) return false;
+        if(whiteTurn) {
+            if(prev.color == Piece.Color.WHITE || curr.color == Piece.Color.WHITE) return false;
+        }
+        else {
+            if(prev.color == Piece.Color.BLACK || curr.color == Piece.Color.BLACK) return false;
+        }
+        return true;
+    }
+
+    private static boolean enPassant(String move, int moveToRow, int moveToColumn) { // REMEMBER TO PUT IN SUPPORT FOR NOT BEING ABLE TO EN PASSANT A PINNED PIECE
+        int rowOfPieceBeingCaptured = (whiteTurn) ? 5 : 4;
+        int currentColumn;
+        switch (move.charAt(0)) {
+            case 'a':
+                currentColumn = 1;
+                break;
+            case 'b':
+                currentColumn = 2;
+                break;
+            case 'c':
+                currentColumn = 3;
+                break;
+            case 'd':
+                currentColumn = 4;
+                break;
+            case 'e':
+                currentColumn = 5;
+                break;
+            case 'f':
+                currentColumn = 6;
+                break;
+            case 'g':
+                currentColumn = 7;
+                break;
+            case 'h':
+                currentColumn = 8;
+                break;
+            default:
+                System.err.println("Column '" + move.charAt(0) + "' is out of range");
+                return false;
+        }
+        Piece pawn = board[rowOfPieceBeingCaptured][currentColumn];
+        Piece capturedPiece = board[rowOfPieceBeingCaptured][moveToColumn];
+
+        // Undo data structures
+        BoardLocation savedLocation = new BoardLocation(pawn.boardLocation.chessLingo);
+        boolean wic = whiteInCheck;
+        boolean bic = blackInCheck;
+        Set<BoardLocation> saveTempSTP = new HashSet<>();
+        Set<BoardLocation> tempPTS = piecesToSquares.get(capturedPiece);
+        //Piece oldPiece = pawn;
+
+        board[rowOfPieceBeingCaptured][currentColumn] = null;
+        board[moveToRow][moveToColumn] = pawn;
+        board[rowOfPieceBeingCaptured][moveToColumn] = null;
+        piecesToSquares.remove(capturedPiece);
+        for(BoardLocation boardLocation : squaresToPieces.keySet()) {
+            Set<Piece> set = squaresToPieces.get(boardLocation);
+            if(set.contains(capturedPiece)) {
+                saveTempSTP.add(boardLocation);
+                set.remove(capturedPiece);
+                squaresToPieces.put(boardLocation, set);
+            }
+        }
+
+        Function<Piece, Boolean> undo = oldPiece -> {
+            oldPiece.boardLocation = savedLocation;
+            board[savedLocation.row][savedLocation.column] = oldPiece;
+            board[rowOfPieceBeingCaptured][moveToColumn] = capturedPiece;
+            board[moveToRow][moveToColumn] = null;
+            piecesToSquares.put(capturedPiece, tempPTS);
+            for(BoardLocation boardLocation : saveTempSTP) {
+                Set<Piece> pieces = squaresToPieces.get(boardLocation);
+                pieces.add(capturedPiece);
+                squaresToPieces.put(boardLocation, pieces);
+            }
+            whiteInCheck = wic;
+            blackInCheck = bic;
+            return true;
+        };
+        determineChecks();
+        if((whiteTurn && whiteInCheck) || (!whiteTurn && blackInCheck)) {
+            System.err.println("Cannot do en passant because it would put your king in check");
+            undo.apply(pawn);
+            return false;
+        }
+        return true;
     }
 
     private static boolean checkmate(Scanner scanner) {

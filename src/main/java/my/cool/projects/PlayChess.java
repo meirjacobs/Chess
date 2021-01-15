@@ -338,7 +338,10 @@ public class PlayChess {
 
     private static boolean determineEnPassant(Piece.PieceType pieceType, int moveToRow, int moveToColumn) {
         if(!pieceType.equals(Piece.PieceType.PAWN) || !((whiteTurn && moveToRow == 6) || (!whiteTurn && moveToRow == 3)) || board[moveToRow][moveToColumn] != null) return false;
+        if(undoStack.size() < 2) return false;
+        redoStack.push(undoStack.pop());
         Piece[][] previousBoard = undoStack.peek().board;
+        undoStack.push(redoStack.pop());
         int rowOfOpposingPawnPreviousLocation;
         int rowOfOpposingPawnCurrentLocation;
         if(whiteTurn) {
@@ -352,7 +355,7 @@ public class PlayChess {
         Piece prev = previousBoard[rowOfOpposingPawnPreviousLocation][moveToColumn];
         Piece curr = board[rowOfOpposingPawnCurrentLocation][moveToColumn];
         if(prev == null || curr == null) return false;
-        if(!(prev.pieceType == Piece.PieceType.PAWN && curr.pieceType != Piece.PieceType.PAWN)) return false;
+        if(!(prev.pieceType == Piece.PieceType.PAWN && curr.pieceType == Piece.PieceType.PAWN)) return false;
         if(whiteTurn) {
             if(prev.color == Piece.Color.WHITE || curr.color == Piece.Color.WHITE) return false;
         }
@@ -407,6 +410,7 @@ public class PlayChess {
 
         board[rowOfPieceBeingCaptured][currentColumn] = null;
         board[moveToRow][moveToColumn] = pawn;
+        pawn.boardLocation = new BoardLocation(moveToRow, moveToColumn);
         board[rowOfPieceBeingCaptured][moveToColumn] = null;
         piecesToSquares.remove(capturedPiece);
         for(BoardLocation boardLocation : squaresToPieces.keySet()) {
@@ -575,10 +579,11 @@ public class PlayChess {
         }
     }
 
-    private static char specifyWhich(String move) {
-        if(move.indexOf('x') == -1) {
+    private static char specifyWhich(String move, Piece.PieceType type) {
+        if(type.equals(Piece.PieceType.PAWN)) return move.charAt(0);
+        if(move.indexOf('x') == -1) { // if it's not a capture
             if(move.length() <= 3) {
-                return 0;
+                return 0; // indeterminate
             }
         }
         else {
@@ -783,7 +788,7 @@ public class PlayChess {
             System.err.printf("There is no %s that can be moved to the desired square\n", type.toString());
         }
         else if(nOfType >= 2) {
-            char which =specifyWhich(move);
+            char which = specifyWhich(move, type);
             if(which != 0) { // The user properly specified which piece to be moved
                 nOfType = 0;
                 for(Piece piece : set) {

@@ -86,22 +86,28 @@ public class PlayChess {
             determineChecks();
             updateMaps();
             printBoard();
-            int result = determineCheckMateOrDraw(color);
+            int checkMateOrDraw = determineCheckMateOrDraw(color);
+            boolean insufficientMaterial = determineDrawByInsufficientMaterial();
             whiteTurn = !whiteTurn;
             castlingMove = false;
             State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
             undoStack.push(state);
-            if(result == 1) {
+            if(checkMateOrDraw == 1) {
                 if(checkmate(scanner)) {
                     break;
                 }
             }
-            else if(result == 0) {
+            else if(checkMateOrDraw == 0) {
                 if(drawByNoAvailableMoves(scanner)) {
                     break;
                 }
             }
-            //TODO: upgrade pawns, en passant, draw by repetition, draw by insufficient material
+            else if(insufficientMaterial) {
+                if(drawByInsufficientMaterial(scanner)) {
+                    break;
+                }
+            }
+            //TODO: draw by repetition
         }
     }
 
@@ -649,6 +655,35 @@ public class PlayChess {
             return 0;
         }
         return 1;
+    }
+
+    private static boolean determineDrawByInsufficientMaterial() {
+        Set<Piece> set = new HashSet<>(piecesToSquares.keySet());
+        for(Piece piece : set) {
+            switch (piece.pieceType) {
+                case PAWN:
+                case ROOK:
+                case QUEEN:
+                    return false;
+                default:
+            }
+        }
+        return true;
+    }
+
+    private static boolean drawByInsufficientMaterial(Scanner scanner) {
+        System.out.println("Game drawn by insufficient material");
+        System.out.println("Enter \"undo move\" or \"end game\"");
+        String input = scanner.nextLine().trim();
+        while(!(input.equals("undo move") || input.equals("end game"))) {
+            System.out.println("Enter \"undo move\" or \"end game\"");
+            input = scanner.nextLine().trim();
+        }
+        if(input.equals("undo move")) {
+            undo();
+            return false;
+        }
+        return true;
     }
 
     private static void initializeBoard() {

@@ -8,6 +8,7 @@ import java.util.function.Function;
 public class PlayChess {
     private static HashMap<Piece, Set<BoardLocation>> piecesToSquares;
     private static HashMap<BoardLocation, Set<Piece>> squaresToPieces;
+    private static BoardMap<Piece[][], Integer> boardMap;
     private static Piece[][] board;
     private static BoardLocation whiteKingLocation;
     private static BoardLocation blackKingLocation;
@@ -26,7 +27,6 @@ public class PlayChess {
         initPTS();
         initSTP();
         initStacks();
-        whiteTurn = true;
         printBoard();
         Scanner scanner;
         if(args.length == 0) {
@@ -90,8 +90,7 @@ public class PlayChess {
             boolean insufficientMaterial = determineDrawByInsufficientMaterial();
             whiteTurn = !whiteTurn;
             castlingMove = false;
-            State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
-            undoStack.push(state);
+            pushState();
             if(checkMateOrDraw == 1) {
                 if(checkmate(scanner)) {
                     break;
@@ -363,12 +362,11 @@ public class PlayChess {
         if(prev == null || curr == null) return false;
         if(!(prev.pieceType == Piece.PieceType.PAWN && curr.pieceType == Piece.PieceType.PAWN)) return false;
         if(whiteTurn) {
-            if(prev.color == Piece.Color.WHITE || curr.color == Piece.Color.WHITE) return false;
+            return prev.color != Piece.Color.WHITE && curr.color != Piece.Color.WHITE;
         }
         else {
-            if(prev.color == Piece.Color.BLACK || curr.color == Piece.Color.BLACK) return false;
+            return prev.color != Piece.Color.BLACK && curr.color != Piece.Color.BLACK;
         }
-        return true;
     }
 
     private static boolean enPassant(String move, int moveToRow, int moveToColumn) { // REMEMBER TO PUT IN SUPPORT FOR NOT BEING ABLE TO EN PASSANT A PINNED PIECE
@@ -718,6 +716,8 @@ public class PlayChess {
         whiteCanCastle = true;
         blackCanCastle = true;
         upgradePawnTo = null;
+        whiteTurn = true;
+        boardMap = new BoardMap<>();
     }
 
     private static void initPTS() {
@@ -799,7 +799,18 @@ public class PlayChess {
     private static void initStacks() {
         undoStack = new Stack<>();
         redoStack = new Stack<>();
-        undoStack.push(new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, true));
+        pushState();
+    }
+
+    private static void pushState() {
+        State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
+        undoStack.push(state);
+        if(boardMap.containsKey(state.board)) {
+            boardMap.put(state.board, boardMap.get(state.board) + 1);
+        }
+        else {
+            boardMap.put(state.board, 1);
+        }
     }
 
     private static int getCoordinateRow(String chessLingo) {
@@ -1098,6 +1109,39 @@ public class PlayChess {
             System.out.print("\n");
         }
         System.out.println("   a  b  c  d  e  f  g  h");
+    }
+
+    private static class BoardMap<Key, Value> extends HashMap<Piece[][], Integer> {
+        @Override
+        public boolean containsKey(Object key) {
+            if(!(key instanceof Piece[][])) {
+                return false;
+            }
+            Piece[][] board = (Piece[][]) key;
+            boolean match;
+            for(Piece[][] boardInMap : keySet()) {
+                match = true;
+                outerLoop:
+                for(int i = 1; i <= 8; i++) {
+                    for(int j = 1; j <= 8; j++) {
+                        if(board[i][j] == null || boardInMap[i][j] == null) {
+                            if(board[i][j] == null && boardInMap[i][j] == null) {
+                                continue;
+                            }
+                            break outerLoop;
+                        }
+                        if(!board[i][j].equals(boardInMap[i][j])) {
+                            match = false;
+                            break outerLoop;
+                        }
+                    }
+                }
+                if(match) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
 }

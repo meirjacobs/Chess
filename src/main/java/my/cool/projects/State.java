@@ -28,7 +28,26 @@ public class State {
         this.board = new Piece[9][9];
         for(int i = 0; i <= 8; i++) {
             for(int j = 0; j <= 8; j++) {
-                this.board[i][j] = board[i][j];
+                Piece piece = board[i][j];
+                if(piece == null) {
+                    this.board[i][j] = null;
+                    continue;
+                }
+                switch (piece.pieceType) {
+                    case PAWN:
+                        this.board[i][j] = new Pawn(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                    case ROOK:
+                        this.board[i][j] = new Rook(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                    case BISHOP:
+                        this.board[i][j] = new Bishop(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                    case KNIGHT:
+                        this.board[i][j] = new Knight(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                    case QUEEN:
+                        this.board[i][j] = new Queen(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                    case KING:
+                        this.board[i][j] = new King(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                    default:
+                }
             }
         }
     }

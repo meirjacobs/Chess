@@ -46,7 +46,34 @@ public abstract class Piece {
     }
 
     protected String shorthand() {
-        return toString().substring(0, 2);
+        switch (toString().substring(0, 2)) {
+            case "Pb":
+                return "\u2659";
+            case "Pw":
+                return "\u265F";
+            case "Bb":
+                return "\u2657";
+            case "Bw":
+                return "\u265D";
+            case "Nb":
+                return "\u2658";
+            case "Nw":
+                return "\u265E";
+            case "Rb":
+                return "\u2656";
+            case "Rw":
+                return "\u265C";
+            case "Qb":
+                return "\u2655";
+            case "Qw":
+                return "\u265B";
+            case "Kb":
+                return "\u2654";
+            case "Kw":
+                return "\u265A";
+            default:
+                return "  ";
+        }
     }
 
     @Override

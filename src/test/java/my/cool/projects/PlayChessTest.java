@@ -22,4 +22,12 @@ public class PlayChessTest {
         String[] array = {file.getAbsolutePath()};
         PlayChess.main(array);
     }
+
+    @Test
+    public void unicode() {
+        String string = "\u2654";
+        System.out.println(string);
+        string = "\u265A";
+        System.out.println(string);
+    }
 }

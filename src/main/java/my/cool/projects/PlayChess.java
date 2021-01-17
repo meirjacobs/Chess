@@ -1078,10 +1078,11 @@ public class PlayChess {
             System.out.print(i + " |");
             for(int j = 1; j <= 8; j++) {
                 if(board[i][j] == null) {
-                    System.out.print("  |");
+                    //String s = "\u2009";
+                    System.out.print("\u3000" + "|");
                     continue;
                 }
-                System.out.printf("%2s|", board[i][j].shorthand());
+                System.out.printf("%1s|", board[i][j].shorthand());
             }
             System.out.print("\n");
         }

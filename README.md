@@ -1,1 +1,1 @@
-# Chess - Building an interactive multiplayer chess game in Java - In Progress
+# Chess - An interactive multiplayer chess game in Java (with undo support)

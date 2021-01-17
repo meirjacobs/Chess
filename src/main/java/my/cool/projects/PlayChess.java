@@ -1,5 +1,4 @@
 package my.cool.projects;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
@@ -8,7 +7,7 @@ import java.util.function.Function;
 public class PlayChess {
     private static HashMap<Piece, Set<BoardLocation>> piecesToSquares;
     private static HashMap<BoardLocation, Set<Piece>> squaresToPieces;
-    private static BoardMap<Piece[][], Integer> boardMap;
+    private static BoardMap boardMap;
     private static Piece[][] board;
     private static BoardLocation whiteKingLocation;
     private static BoardLocation blackKingLocation;
@@ -68,7 +67,6 @@ public class PlayChess {
                     if(!enPassant(move, toRow, toColumn)) {
                         continue;
                     }
-                    // skip to after this next else statement, i don't think there's any more code to put here
                 }
                 else {
                     Set<Piece> set = squaresToPieces.get(new BoardLocation(toRow, toColumn));
@@ -80,7 +78,11 @@ public class PlayChess {
                     if (piece == null) continue;
                     if (!validMove(piece, toRow, toColumn, capture, true)) continue;
                     BoardLocation moveTo = new BoardLocation(toRow, toColumn);
-                    Function<Piece, Boolean> successful = capture ? capture(piece, moveTo) : move(piece, moveTo);
+                    if (capture) {
+                        capture(piece, moveTo);
+                    } else {
+                        move(piece, moveTo);
+                    }
                 }
             }
             redoStack.clear();
@@ -112,7 +114,6 @@ public class PlayChess {
                     break;
                 }
             }
-            //TODO: draw by repetition
         }
     }
 
@@ -179,7 +180,6 @@ public class PlayChess {
     }
 
     private static void returnToState(State state) {
-        //piecesToSquares = new HashMap<>(state.piecesToSquares);
         copyPTS(state.piecesToSquares);
         initSTP();
         fillUpBoardFromPTS();
@@ -288,24 +288,6 @@ public class PlayChess {
 
     private static BoardLocation calculateCastlingDestination(int side, Piece.Color color) {
         return side == 9 ? color == Piece.Color.WHITE ? new BoardLocation("g1") : new BoardLocation("g8") : color == Piece.Color.WHITE ? new BoardLocation("c1") : new BoardLocation("c8");
-        /*BoardLocation destination;
-        if(side == 9) {
-            if(color == Piece.Color.WHITE) {
-                destination = new BoardLocation("g1");
-            }
-            else {
-                destination = new BoardLocation("g8");
-            }
-        }
-        else {
-            if(color == Piece.Color.WHITE) {
-                destination = new BoardLocation("c1");
-            }
-            else {
-                destination = new BoardLocation("c8");
-            }
-        }
-        return destination;*/
     }
 
     private static Piece determineCastlingRook(BoardLocation destination) {
@@ -739,7 +721,7 @@ public class PlayChess {
         blackCanCastle = true;
         upgradePawnTo = null;
         whiteTurn = true;
-        boardMap = new BoardMap<>();
+        boardMap = new BoardMap();
     }
 
     private static void initPTS() {
@@ -1045,37 +1027,6 @@ public class PlayChess {
         }
     }
 
-    private static void replaceOnAllMaps(Piece piece, Piece current) {
-        piecesToSquares.remove(piece);
-        Set<BoardLocation> set = new HashSet<>();
-        int currentRow = current.boardLocation.row;
-        int currentColumn = current.boardLocation.column;
-        for(int i = 1; i <= 8; i++) {
-            for(int j = 1; j <= 8; j++) {
-                if(validMove(current, i, j, true, false) || validMove(current, i, j, false, false)) {
-                    set.add(new BoardLocation(i, j));
-                }
-            }
-        }
-        piecesToSquares.put(current, set);
-        if(current.pieceType == Piece.PieceType.KING) {
-            if(current.color == Piece.Color.WHITE) {
-                whiteKingLocation = current.boardLocation;
-            }
-            else {
-                blackKingLocation = current.boardLocation;
-            }
-        }
-        for(BoardLocation boardLocation : squaresToPieces.keySet()) {
-            Set<Piece> set1 = squaresToPieces.get(boardLocation);
-            if(set1.remove(piece)) squaresToPieces.put(boardLocation, set1);
-        }
-        for(BoardLocation boardLocation : set) {
-            Set<Piece> set2 = squaresToPieces.get(boardLocation);
-            set2.add(current);
-        }
-    }
-
     private static void updateMaps() {
         // go through every piece and go through all of it's potential valid squares and if it's valid add it to maps
         //HashMap<Piece, Set<BoardLocation>> tempMap = new HashMap<>(piecesToSquares);
@@ -1083,7 +1034,7 @@ public class PlayChess {
         for(Piece piece : tempSet) {
             Set<BoardLocation> set = piecesToSquares.get(piece);
             if(set == null) {
-                System.out.println(piece.toString());
+                set = new HashSet<>();
             }
             set.clear();
             int currentRow = piece.boardLocation.row;
@@ -1137,7 +1088,7 @@ public class PlayChess {
         System.out.println("   a  b  c  d  e  f  g  h");
     }
 
-    private static class BoardMap<Key, Value> extends HashMap<Piece[][], Integer> {
+    private static class BoardMap extends HashMap<Piece[][], Integer> {
 
         public Piece[][] getKeyDeepEquals(Object key) {
             if(!(key instanceof Piece[][])) {
@@ -1147,23 +1098,6 @@ public class PlayChess {
             Piece[][] match;
             for(Piece[][] boardInMap : keySet()) {
                 match = (Arrays.deepEquals(boardInMap, board)) ? boardInMap : null;
-                /*match = true;
-                outerLoop:
-                for(int i = 1; i <= 8; i++) {
-                    for(int j = 1; j <= 8; j++) {
-                        if(board[i][j] == null || boardInMap[i][j] == null) {
-                            if(board[i][j] == null && boardInMap[i][j] == null) {
-                                continue;
-                            }
-                            match = false;
-                            break outerLoop;
-                        }
-                        if(!board[i][j].equals(boardInMap[i][j])) {
-                            match = false;
-                            break outerLoop;
-                        }
-                    }
-                }*/
                 if(match != null) {
                     return match;
                 }

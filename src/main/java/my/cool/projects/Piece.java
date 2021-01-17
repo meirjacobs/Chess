@@ -61,7 +61,7 @@ public abstract class Piece {
 
     @Override
     public int hashCode() {
-        return ((Objects.hash(color, boardLocation, pieceType) * 11) + 7) % 31;
+        return ((Objects.hash(color, boardLocation, pieceType) * 11) + 5) % 31;
     }
 
     @Override

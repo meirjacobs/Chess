@@ -36,16 +36,22 @@ public class State {
                 switch (piece.pieceType) {
                     case PAWN:
                         this.board[i][j] = new Pawn(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                        break;
                     case ROOK:
                         this.board[i][j] = new Rook(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                        break;
                     case BISHOP:
                         this.board[i][j] = new Bishop(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                        break;
                     case KNIGHT:
                         this.board[i][j] = new Knight(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                        break;
                     case QUEEN:
                         this.board[i][j] = new Queen(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                        break;
                     case KING:
                         this.board[i][j] = new King(piece.color, new BoardLocation(piece.boardLocation.chessLingo));
+                        break;
                     default:
                 }
             }

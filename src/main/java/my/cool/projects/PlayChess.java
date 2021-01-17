@@ -21,6 +21,7 @@ public class PlayChess {
     private static boolean whiteCanCastle;
     private static boolean blackCanCastle;
     private static Piece.PieceType upgradePawnTo;
+    private static Piece[][] lastBoardInBoardMap;
 
     public static void main(String[] args) throws FileNotFoundException {
         initializeBoard();
@@ -91,6 +92,11 @@ public class PlayChess {
             whiteTurn = !whiteTurn;
             castlingMove = false;
             pushState();
+            if(determineDrawByRepetition()) {
+                if(drawByRepetition(scanner)) {
+                    break;
+                }
+            }
             if(checkMateOrDraw == 1) {
                 if(checkmate(scanner)) {
                     break;
@@ -684,6 +690,25 @@ public class PlayChess {
         return true;
     }
 
+    private static boolean determineDrawByRepetition() {
+        return boardMap.get(lastBoardInBoardMap) > 2;
+    }
+
+    private static boolean drawByRepetition(Scanner scanner) {
+        System.out.println("Game drawn by repetition");
+        System.out.println("Enter \"undo move\" or \"end game\"");
+        String input = scanner.nextLine().trim();
+        while(!(input.equals("undo move") || input.equals("end game"))) {
+            System.out.println("Enter \"undo move\" or \"end game\"");
+            input = scanner.nextLine().trim();
+        }
+        if(input.equals("undo move")) {
+            undo();
+            return false;
+        }
+        return true;
+    }
+
     private static void initializeBoard() {
         board = new Piece[9][9];
         board[1][1] = new Rook(Piece.Color.WHITE, new BoardLocation(1,1));
@@ -805,11 +830,15 @@ public class PlayChess {
     private static void pushState() {
         State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
         undoStack.push(state);
-        if(boardMap.containsKey(state.board)) {
-            boardMap.put(state.board, boardMap.get(state.board) + 1);
+        Piece[][] matchingBoard = boardMap.getKeyDeepEquals(state.board);
+        if(matchingBoard == null) {
+            boardMap.put(state.board, 1);
+            lastBoardInBoardMap = state.board;
         }
         else {
-            boardMap.put(state.board, 1);
+            int got = boardMap.get(matchingBoard);
+            boardMap.put(matchingBoard, got + 1);
+            lastBoardInBoardMap = matchingBoard;
         }
     }
 
@@ -1112,15 +1141,16 @@ public class PlayChess {
     }
 
     private static class BoardMap<Key, Value> extends HashMap<Piece[][], Integer> {
-        @Override
-        public boolean containsKey(Object key) {
+
+        public Piece[][] getKeyDeepEquals(Object key) {
             if(!(key instanceof Piece[][])) {
-                return false;
+                return null;
             }
             Piece[][] board = (Piece[][]) key;
-            boolean match;
+            Piece[][] match;
             for(Piece[][] boardInMap : keySet()) {
-                match = true;
+                match = (Arrays.deepEquals(boardInMap, board)) ? boardInMap : null;
+                /*match = true;
                 outerLoop:
                 for(int i = 1; i <= 8; i++) {
                     for(int j = 1; j <= 8; j++) {
@@ -1128,6 +1158,7 @@ public class PlayChess {
                             if(board[i][j] == null && boardInMap[i][j] == null) {
                                 continue;
                             }
+                            match = false;
                             break outerLoop;
                         }
                         if(!board[i][j].equals(boardInMap[i][j])) {
@@ -1135,12 +1166,12 @@ public class PlayChess {
                             break outerLoop;
                         }
                     }
-                }
-                if(match) {
-                    return true;
+                }*/
+                if(match != null) {
+                    return match;
                 }
             }
-            return false;
+            return null;
         }
     }
 

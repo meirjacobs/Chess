@@ -459,7 +459,6 @@ public class PlayChess {
     private static boolean checkmate(Scanner scanner) {
         String winner = (whiteTurn) ? "White" : "Black";
         System.out.println("Checkmate! " + winner + " wins!");
-        System.out.println("Enter \"undo move\" or \"end game\"");
         String input = scanner.nextLine().trim();
         while(!(input.equals("undo move") || input.equals("end game"))) {
             System.out.println("Enter \"undo move\" or \"end game\"");
@@ -474,7 +473,6 @@ public class PlayChess {
 
     private static boolean drawByNoAvailableMoves(Scanner scanner) {
         System.out.println("Game drawn by no available moves");
-        System.out.println("Enter \"undo move\" or \"end game\"");
         String input = scanner.nextLine().trim();
         while(!(input.equals("undo move") || input.equals("end game"))) {
             System.out.println("Enter \"undo move\" or \"end game\"");
@@ -696,7 +694,6 @@ public class PlayChess {
 
     private static boolean drawByRepetition(Scanner scanner) {
         System.out.println("Game drawn by repetition");
-        System.out.println("Enter \"undo move\" or \"end game\"");
         String input = scanner.nextLine().trim();
         while(!(input.equals("undo move") || input.equals("end game"))) {
             System.out.println("Enter \"undo move\" or \"end game\"");

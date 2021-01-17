@@ -19,18 +19,6 @@ public class BoardLocation {
         this.column = PlayChess.determineMoveToColumn(chessLingo, true);
     }
 
-    public void setLocation(int row, int column) {
-        this.row = row;
-        this.column = column;
-        this.chessLingo = PlayChess.toChessLingo(row, column);
-    }
-
-    public void setLocation(String chessLingo) {
-        this.chessLingo = chessLingo;
-        this.row = PlayChess.determineMoveToRow(chessLingo);
-        this.column = PlayChess.determineMoveToColumn(chessLingo, true);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

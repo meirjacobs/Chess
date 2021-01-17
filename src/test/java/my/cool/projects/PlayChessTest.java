@@ -30,4 +30,9 @@ public class PlayChessTest {
         string = "\u265A";
         System.out.println(string);
     }
+
+    @Test
+    public void run() throws FileNotFoundException {
+        PlayChess.main(new String[] {});
+    }
 }

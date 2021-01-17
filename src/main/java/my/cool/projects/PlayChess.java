@@ -188,6 +188,8 @@ public class PlayChess {
         whiteInCheck = state.whiteInCheck;
         blackInCheck = state.blackInCheck;
         whiteTurn = state.whiteTurn;
+        Piece[][] deepEquals = boardMap.getKeyDeepEquals(state.board);
+        boardMap.put(deepEquals, boardMap.get(deepEquals) - 1);
     }
 
     private static void copyPTS(HashMap<Piece, Set<BoardLocation>> statePTS) {
@@ -262,7 +264,7 @@ public class PlayChess {
             }
             count++;
         }
-        currentColumn += direction;
+        //currentColumn += direction;
         if(currentColumn != castlingRook.boardLocation.column && board[king.row][currentColumn] != null) {
             return false;
         }
@@ -807,18 +809,20 @@ public class PlayChess {
     }
 
     private static void pushState() {
-        State state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
-        undoStack.push(state);
-        Piece[][] matchingBoard = boardMap.getKeyDeepEquals(state.board);
+        State state;
+        Piece[][] matchingBoard = boardMap.getKeyDeepEquals(board);
         if(matchingBoard == null) {
+            state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
             boardMap.put(state.board, 1);
             lastBoardInBoardMap = state.board;
         }
         else {
+            state = new State(piecesToSquares, squaresToPieces, matchingBoard, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
             int got = boardMap.get(matchingBoard);
             boardMap.put(matchingBoard, got + 1);
             lastBoardInBoardMap = matchingBoard;
         }
+        undoStack.push(state);
     }
 
     private static int getCoordinateRow(String chessLingo) {

@@ -1140,6 +1140,7 @@ public class PlayChess {
             }
             white = !white;
         }
+        System.out.println("");
     }
 
     private static class BoardMap extends HashMap<Piece[][], Integer> {

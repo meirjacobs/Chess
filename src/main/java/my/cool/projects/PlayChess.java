@@ -105,6 +105,7 @@ public class PlayChess {
             boolean insufficientMaterial = determineDrawByInsufficientMaterial();
             whiteTurn = !whiteTurn;
             castlingMove = false;
+            move = editMoveToAccommodateCheck(move, checkMateOrDraw);
             pushState(move);
             if(determineDrawByRepetition()) {
                 if(drawByRepetition(scanner)) {
@@ -457,15 +458,29 @@ public class PlayChess {
 
     private static boolean checkmate(Scanner scanner) {
         String winner = (whiteTurn) ? "White" : "Black";
-        System.out.println("Checkmate! " + winner + " wins!");
+        System.out.println("Checkmate! " + winner + " wins!\n" +
+                "Write \"undo\" to undo, \"end game\" to end the game, or \"log\" to see the game log.");
         String input = scanner.nextLine().trim();
-        while(!(input.equals("undo") || input.equals("end game"))) {
-            System.out.println("Enter \"undo\" or \"end game\"");
+        while(!(input.equals("undo") || input.equals("end game") || input.equals("log"))) {
+            System.out.println("Enter \"undo\" or \"end game\" or \"log\"");
             input = scanner.nextLine().trim();
         }
         if(input.equals("undo")) {
             undo();
             return false;
+        }
+        if(input.equals("log")) {
+            gameLog();
+            System.out.println("Write \"undo\" to undo, or \"end game\" to end the game.");
+            input = scanner.nextLine().trim();
+            while(!(input.equals("undo") || input.equals("end game"))) {
+                System.out.println("Enter \"undo\" or \"end game\"");
+                input = scanner.nextLine().trim();
+            }
+            if(input.equals("undo")) {
+                undo();
+                return false;
+            }
         }
         return true;
     }
@@ -1141,6 +1156,12 @@ public class PlayChess {
             white = !white;
         }
         System.out.println("");
+    }
+
+    private static String editMoveToAccommodateCheck(String move, int checkmateCode) {
+        if(checkmateCode == 1) return move + "++";
+        if(whiteInCheck || blackInCheck) return move + "+";
+        return move;
     }
 
     private static class BoardMap extends HashMap<Piece[][], Integer> {

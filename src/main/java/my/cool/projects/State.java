@@ -10,8 +10,9 @@ public class State {
     protected boolean whiteInCheck;
     protected boolean blackInCheck;
     protected boolean whiteTurn;
+    protected String lastMove;
 
-    State(HashMap<Piece, Set<BoardLocation>> piecesToSquares, HashMap<BoardLocation, Set<Piece>> squaresToPieces, Piece[][] board, BoardLocation whiteKingLocation, BoardLocation blackKingLocation, boolean whiteInCheck, boolean blackInCheck, boolean whiteTurn) {
+    State(HashMap<Piece, Set<BoardLocation>> piecesToSquares, HashMap<BoardLocation, Set<Piece>> squaresToPieces, Piece[][] board, BoardLocation whiteKingLocation, BoardLocation blackKingLocation, boolean whiteInCheck, boolean blackInCheck, boolean whiteTurn, String lastMove) {
         copyPTS(piecesToSquares);
         copySTP(squaresToPieces);
         copyBoard(board);
@@ -20,6 +21,7 @@ public class State {
         this.whiteInCheck = whiteInCheck;
         this.blackInCheck = blackInCheck;
         this.whiteTurn = whiteTurn;
+        this.lastMove = lastMove;
     }
 
     private void copyBoard(Piece[][] board) {

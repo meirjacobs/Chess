@@ -16,6 +16,7 @@ public class PlayChess {
     private static boolean whiteTurn;
     private static Stack<State> undoStack;
     private static Stack<State> redoStack;
+    private static Stack<String> gameLog;
     private static boolean castlingMove;
     private static boolean whiteCanCastle;
     private static boolean blackCanCastle;
@@ -36,8 +37,11 @@ public class PlayChess {
             File file = new File(args[0]);
             scanner = new Scanner(file);
         }
+        help();
         while(true) {
             upgradePawnTo = null;
+            if(whiteTurn) System.out.println("\nWhite Turn: ");
+            else System.out.println("\nBlack Turn: ");
             if(!scanner.hasNext()) break;
             String move = scanner.next();
             if(move.equals("undo")) {
@@ -46,6 +50,14 @@ public class PlayChess {
             }
             if(move.equals("redo")) {
                 redo();
+                continue;
+            }
+            if(move.equals("help")) {
+                help();
+                continue;
+            }
+            if(move.equals("log")) {
+                gameLog();
                 continue;
             }
             if(!validInput(move)) continue;
@@ -93,7 +105,7 @@ public class PlayChess {
             boolean insufficientMaterial = determineDrawByInsufficientMaterial();
             whiteTurn = !whiteTurn;
             castlingMove = false;
-            pushState();
+            pushState(move);
             if(determineDrawByRepetition()) {
                 if(drawByRepetition(scanner)) {
                     break;
@@ -124,22 +136,25 @@ public class PlayChess {
             if(printErrors) System.err.println("Must specify which piece you're upgrading the pawn to. Use notation e.g. \"g8=Q\" or \"gxh8=Q\"");
             return false;
         }
+        //if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
+        BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
+        Function<Piece, Boolean> undo;
+        undo = capture ? capture(piece, moveTo) : move(piece, moveTo);
+        determineChecks();
         if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
-            BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
-            Function<Piece, Boolean> undo;
-            undo = capture ? capture(piece, moveTo) : move(piece, moveTo);
-            determineChecks();
-            if(piece.color == Piece.Color.WHITE && whiteInCheck || piece.color == Piece.Color.BLACK && blackInCheck) {
-                if(printErrors) System.err.println("Illegal move: King is in check");
-                piece.boardLocation = savedLocation;
-                undo.apply(piece);
-                return false;
+            if(printErrors) {
+                if(piece.pieceType.equals(Piece.PieceType.KING)) System.err.println("Illegal move: King cannot move there, it would be putting itself into check");
+                else System.err.println("Illegal move: King is in check");
             }
             piece.boardLocation = savedLocation;
             undo.apply(piece);
-            return true;
+            return false;
         }
-        if(piece.pieceType.equals(Piece.PieceType.KING)) {
+        piece.boardLocation = savedLocation;
+        undo.apply(piece);
+        return true;
+        //}
+        /*if(piece.pieceType.equals(Piece.PieceType.KING)) {
             BoardLocation moveTo = new BoardLocation(moveToRow, moveToColumn);
             Function<Piece, Boolean> undo;
             undo = capture ? capture(piece, moveTo) : move(piece, moveTo);
@@ -154,7 +169,7 @@ public class PlayChess {
             undo.apply(piece);
             return true;
         }
-        return true;
+        return true;*/
     }
 
     private static void undo() {
@@ -444,11 +459,11 @@ public class PlayChess {
         String winner = (whiteTurn) ? "White" : "Black";
         System.out.println("Checkmate! " + winner + " wins!");
         String input = scanner.nextLine().trim();
-        while(!(input.equals("undo move") || input.equals("end game"))) {
-            System.out.println("Enter \"undo move\" or \"end game\"");
+        while(!(input.equals("undo") || input.equals("end game"))) {
+            System.out.println("Enter \"undo\" or \"end game\"");
             input = scanner.nextLine().trim();
         }
-        if(input.equals("undo move")) {
+        if(input.equals("undo")) {
             undo();
             return false;
         }
@@ -805,19 +820,20 @@ public class PlayChess {
     private static void initStacks() {
         undoStack = new Stack<>();
         redoStack = new Stack<>();
-        pushState();
+        gameLog = new Stack<>();
+        pushState(null);
     }
 
-    private static void pushState() {
+    private static void pushState(String move) {
         State state;
         Piece[][] matchingBoard = boardMap.getKeyDeepEquals(board);
         if(matchingBoard == null) {
-            state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
+            state = new State(piecesToSquares, squaresToPieces, board, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn, move);
             boardMap.put(state.board, 1);
             lastBoardInBoardMap = state.board;
         }
         else {
-            state = new State(piecesToSquares, squaresToPieces, matchingBoard, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn);
+            state = new State(piecesToSquares, squaresToPieces, matchingBoard, whiteKingLocation, blackKingLocation, whiteInCheck, blackInCheck, whiteTurn, move);
             int got = boardMap.get(matchingBoard);
             boardMap.put(matchingBoard, got + 1);
             lastBoardInBoardMap = matchingBoard;
@@ -1091,6 +1107,39 @@ public class PlayChess {
             System.out.print("\n");
         }
         System.out.println("   a  b  c  d  e  f  g  h");
+    }
+
+    private static void help() {
+        System.out.println("Write move in chess notation (e.g. \"e4\", \"Bc6\", \"Qxa8\", \"O-O\") and hit enter.\n" +
+                "Do not use \"+\" for check or \"++\" for checkmate.\n" +
+                "Write \"undo\" to undo move or \"redo\" to redo move.\n" +
+                "Write \"log\" to print the game log." +
+                "Write \"help\" to repeat these instructions at any time."
+        );
+    }
+
+    private static void gameLog() {
+        System.out.println("\nGAME LOG:");
+        if(undoStack.size() <= 1) {
+            System.out.println("No moves yet");
+            return;
+        }
+        System.out.println("\n    | White | Black\n---------------------------");
+        Iterator<State> iterator = undoStack.iterator();
+        boolean white = true;
+        int nTurn = 1;
+        while(iterator.hasNext()) {
+            String move = iterator.next().lastMove;
+            if(move == null) continue;
+            if(white) {
+                System.out.printf("%3d |%6s | ", nTurn, move);
+            }
+            else {
+                System.out.println(move);
+                nTurn++;
+            }
+            white = !white;
+        }
     }
 
     private static class BoardMap extends HashMap<Piece[][], Integer> {

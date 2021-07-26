@@ -75,7 +75,7 @@ public class PlayChess {
             else {
                 int toColumn = determineMoveToColumn(move, false);
                 if (pieceType == null || toRow == -1 || toColumn == -1) continue;
-                if(determineEnPassant(pieceType, toRow, toColumn)) {
+                if(determineEnPassant(move, pieceType, toRow, toColumn)) {
                     if(!enPassant(move, toRow, toColumn)) {
                         continue;
                     }
@@ -347,7 +347,7 @@ public class PlayChess {
         }
     }
 
-    private static boolean determineEnPassant(Piece.PieceType pieceType, int moveToRow, int moveToColumn) {
+    private static boolean determineEnPassant(String move, Piece.PieceType pieceType, int moveToRow, int moveToColumn) {
         if(!pieceType.equals(Piece.PieceType.PAWN) || !((whiteTurn && moveToRow == 6) || (!whiteTurn && moveToRow == 3)) || board[moveToRow][moveToColumn] != null) return false;
         if(undoStack.size() < 2) return false;
         redoStack.push(undoStack.pop());
@@ -367,10 +367,43 @@ public class PlayChess {
         Piece curr = board[rowOfOpposingPawnCurrentLocation][moveToColumn];
         if(prev == null || curr == null) return false;
         if(!(prev.pieceType == Piece.PieceType.PAWN && curr.pieceType == Piece.PieceType.PAWN)) return false;
+        int rowOfPieceBeingCaptured = (whiteTurn) ? 5 : 4;
+        int currentColumn;
+        switch (move.charAt(0)) {
+            case 'a':
+                currentColumn = 1;
+                break;
+            case 'b':
+                currentColumn = 2;
+                break;
+            case 'c':
+                currentColumn = 3;
+                break;
+            case 'd':
+                currentColumn = 4;
+                break;
+            case 'e':
+                currentColumn = 5;
+                break;
+            case 'f':
+                currentColumn = 6;
+                break;
+            case 'g':
+                currentColumn = 7;
+                break;
+            case 'h':
+                currentColumn = 8;
+                break;
+            default:
+                System.err.println("Column '" + move.charAt(0) + "' is out of range");
+                return false;
+        }
         if(whiteTurn) {
+            if(board[rowOfPieceBeingCaptured - 1][currentColumn] == null) return false;
             return prev.color != Piece.Color.WHITE && curr.color != Piece.Color.WHITE;
         }
         else {
+            if(board[rowOfPieceBeingCaptured + 1][currentColumn] == null) return false;
             return prev.color != Piece.Color.BLACK && curr.color != Piece.Color.BLACK;
         }
     }

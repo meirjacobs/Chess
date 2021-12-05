@@ -28,7 +28,7 @@ public class PlayChess {
         initPTS();
         initSTP();
         initStacks();
-        printBoard();
+        printBoard(true);
         Scanner scanner;
         if(args.length == 0) {
             scanner = new Scanner(System.in);
@@ -100,7 +100,7 @@ public class PlayChess {
             redoStack.clear();
             determineChecks();
             updateMaps();
-            printBoard();
+            printBoard(!whiteTurn);
             int checkMateOrDraw = determineCheckMateOrDraw(color);
             boolean insufficientMaterial = determineDrawByInsufficientMaterial();
             whiteTurn = !whiteTurn;
@@ -181,7 +181,7 @@ public class PlayChess {
         redoStack.push(undoStack.pop());
         State state = undoStack.peek();
         returnToState(state);
-        printBoard();
+        printBoard(whiteTurn);
     }
 
     private static void redo() {
@@ -192,7 +192,7 @@ public class PlayChess {
         State state = redoStack.pop();
         returnToState(state);
         undoStack.push(state);
-        printBoard();
+        printBoard(whiteTurn);
     }
 
     private static void returnToState(State state) {
@@ -1141,20 +1141,37 @@ public class PlayChess {
         }
     }
 
-    private static void printBoard() {
-        for(int i = 8; i >= 1; i--) {
-            System.out.print(i + " |");
-            for(int j = 1; j <= 8; j++) {
-                if(board[i][j] == null) {
-                    //String s = "\u2009";
-                    System.out.print("\u3000" + "|");
-                    continue;
+    private static void printBoard(boolean whitePerspective) {
+        if(whitePerspective) {
+            for (int i = 8; i >= 1; i--) {
+                System.out.print(i + " |");
+                for (int j = 1; j <= 8; j++) {
+                    if (board[i][j] == null) {
+                        //String s = "\u2009";
+                        System.out.print("\u3000" + "|");
+                        continue;
+                    }
+                    System.out.printf("%1s|", board[i][j].shorthand());
                 }
-                System.out.printf("%1s|", board[i][j].shorthand());
+                System.out.print("\n");
             }
-            System.out.print("\n");
+            System.out.println("   a  b  c  d  e  f  g  h");
         }
-        System.out.println("   a  b  c  d  e  f  g  h");
+        else {
+            for (int i = 1; i <= 8; i++) {
+                System.out.print(i + " |");
+                for (int j = 8; j >= 1; j--) {
+                    if (board[i][j] == null) {
+                        //String s = "\u2009";
+                        System.out.print("\u3000" + "|");
+                        continue;
+                    }
+                    System.out.printf("%1s|", board[i][j].shorthand());
+                }
+                System.out.print("\n");
+            }
+            System.out.println("   h  g  f  e  d  c  b  a");
+        }
     }
 
     private static void help() {

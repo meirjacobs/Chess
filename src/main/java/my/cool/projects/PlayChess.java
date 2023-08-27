@@ -16,12 +16,12 @@ public class PlayChess {
     private static boolean whiteTurn;
     private static Stack<State> undoStack;
     private static Stack<State> redoStack;
-    private static Stack<String> gameLog;
     private static boolean castlingMove;
     private static boolean whiteCanCastle;
     private static boolean blackCanCastle;
     private static Piece.PieceType upgradePawnTo;
     private static Piece[][] lastBoardInBoardMap;
+    private static Scanner scanner;
 
     public static void main(String[] args) throws FileNotFoundException {
         initializeBoard();
@@ -29,7 +29,6 @@ public class PlayChess {
         initSTP();
         initStacks();
         printBoard(true);
-        Scanner scanner;
         if(args.length == 0) {
             scanner = new Scanner(System.in);
         }
@@ -38,6 +37,10 @@ public class PlayChess {
             scanner = new Scanner(file);
         }
         help();
+        multiplayerGame();
+    }
+
+    private static void multiplayerGame() {
         while(true) {
             upgradePawnTo = null;
             if(whiteTurn) System.out.println("\nWhite Turn: ");
@@ -67,7 +70,7 @@ public class PlayChess {
             Piece.Color color = whiteTurn ? Piece.Color.WHITE : Piece.Color.BLACK;
             if(castlingMove) {
                 if(!castling(toRow, color)) {
-                    System.err.println("Castling unsuccessful");
+                    System.err.println("You cannot castle in this position");
                     castlingMove = false;
                     continue;
                 }
@@ -75,7 +78,7 @@ public class PlayChess {
             else {
                 int toColumn = determineMoveToColumn(move, false);
                 if (pieceType == null || toRow == -1 || toColumn == -1) continue;
-                if(determineEnPassant(move, pieceType, toRow, toColumn)) {
+                if(determineEnPassant(move, pieceType, toRow, toColumn, capture)) {
                     if(!enPassant(move, toRow, toColumn)) {
                         continue;
                     }
@@ -260,19 +263,19 @@ public class PlayChess {
         if(side != 9 && side != 10) {// Take this part out after you know it works
             throw new IllegalArgumentException("Something went wrong");
         }
-        BoardLocation king = color == Piece.Color.WHITE ? whiteKingLocation : blackKingLocation;
+        BoardLocation kingLocation = color == Piece.Color.WHITE ? whiteKingLocation : blackKingLocation;
         BoardLocation destination = calculateCastlingDestination(side, color);
         Piece castlingRook = determineCastlingRook(destination);
         if(castlingRook == null) return false;
         BoardLocation rookDestination = determineCastlingRookDestination(castlingRook);
-        int direction = destination.column > king.column ? 1 : -1;
+        int direction = destination.column > kingLocation.column ? 1 : -1;
         int count = 0;
         int currentColumn;
-        for(currentColumn = direction + king.column; count < 2; currentColumn += direction) {
-            if(board[king.row][currentColumn] != null) {
+        for(currentColumn = direction + kingLocation.column; count < 2; currentColumn += direction) {
+            if(board[kingLocation.row][currentColumn] != null) {
                 return false;
             }
-            Set<Piece> pieces = squaresToPieces.get(new BoardLocation(king.row, currentColumn));
+            Set<Piece> pieces = squaresToPieces.get(new BoardLocation(kingLocation.row, currentColumn));
             for(Piece piece : pieces) {
                 if(!piece.color.equals(color)) {
                     return false;
@@ -281,17 +284,17 @@ public class PlayChess {
             count++;
         }
         //currentColumn += direction;
-        if(currentColumn != castlingRook.boardLocation.column && board[king.row][currentColumn] != null) {
+        if(currentColumn != castlingRook.boardLocation.column && board[kingLocation.row][currentColumn] != null) {
             return false;
         }
-        Piece theKing = board[king.row][king.column];
-        board[destination.row][destination.column] = theKing;
-        theKing.boardLocation = destination;
-        board[king.row][king.column] = null;
+        Piece king = board[kingLocation.row][kingLocation.column];
+        board[destination.row][destination.column] = king;
+        king.boardLocation = destination;
+        board[kingLocation.row][kingLocation.column] = null;
         board[castlingRook.boardLocation.row][castlingRook.boardLocation.column] = null;
         board[rookDestination.row][rookDestination.column] = castlingRook;
         castlingRook.boardLocation = rookDestination;
-        updateKingLocation(theKing);
+        updateKingLocation(king);
         return true;
     }
 
@@ -347,98 +350,18 @@ public class PlayChess {
         }
     }
 
-    private static boolean determineEnPassant(String move, Piece.PieceType pieceType, int moveToRow, int moveToColumn) {
-        if(!pieceType.equals(Piece.PieceType.PAWN) || !((whiteTurn && moveToRow == 6) || (!whiteTurn && moveToRow == 3)) || board[moveToRow][moveToColumn] != null) return false;
-        if(undoStack.size() < 2) return false;
-        redoStack.push(undoStack.pop());
-        Piece[][] previousBoard = undoStack.peek().board;
-        undoStack.push(redoStack.pop());
-        int rowOfOpposingPawnPreviousLocation;
-        int rowOfOpposingPawnCurrentLocation;
-        if(whiteTurn) {
-            rowOfOpposingPawnPreviousLocation = 7;
-            rowOfOpposingPawnCurrentLocation = 5;
-        }
-        else {
-            rowOfOpposingPawnPreviousLocation = 2;
-            rowOfOpposingPawnCurrentLocation = 4;
-        }
-        Piece prev = previousBoard[rowOfOpposingPawnPreviousLocation][moveToColumn];
-        Piece curr = board[rowOfOpposingPawnCurrentLocation][moveToColumn];
-        if(prev == null || curr == null) return false;
-        if(!(prev.pieceType == Piece.PieceType.PAWN && curr.pieceType == Piece.PieceType.PAWN)) return false;
-        int rowOfPieceBeingCaptured = (whiteTurn) ? 5 : 4;
-        int currentColumn;
-        switch (move.charAt(0)) {
-            case 'a':
-                currentColumn = 1;
-                break;
-            case 'b':
-                currentColumn = 2;
-                break;
-            case 'c':
-                currentColumn = 3;
-                break;
-            case 'd':
-                currentColumn = 4;
-                break;
-            case 'e':
-                currentColumn = 5;
-                break;
-            case 'f':
-                currentColumn = 6;
-                break;
-            case 'g':
-                currentColumn = 7;
-                break;
-            case 'h':
-                currentColumn = 8;
-                break;
-            default:
-                System.err.println("Column '" + move.charAt(0) + "' is out of range");
-                return false;
-        }
-        if(whiteTurn) {
-            if(board[rowOfPieceBeingCaptured - 1][currentColumn] == null) return false;
-            return prev.color != Piece.Color.WHITE && curr.color != Piece.Color.WHITE;
-        }
-        else {
-            if(board[rowOfPieceBeingCaptured + 1][currentColumn] == null) return false;
-            return prev.color != Piece.Color.BLACK && curr.color != Piece.Color.BLACK;
-        }
+    private static boolean determineEnPassant(String move, Piece.PieceType pieceType, int moveToRow, int moveToColumn, boolean capture) {
+        if(!pieceType.equals(Piece.PieceType.PAWN) || !capture || !((whiteTurn && moveToRow == 6) || (!whiteTurn && moveToRow == 3)) || board[moveToRow][moveToColumn] != null) return false;
+        String anticipatedLastMove = whiteTurn ? (Utils.columnToLetter(moveToColumn) + "5") : (Utils.columnToLetter(moveToColumn) + "4");
+        return undoStack.peek().lastMove.equals(anticipatedLastMove);
     }
 
-    private static boolean enPassant(String move, int moveToRow, int moveToColumn) { // REMEMBER TO PUT IN SUPPORT FOR NOT BEING ABLE TO EN PASSANT A PINNED PIECE
+    private static boolean enPassant(String move, int moveToRow, int moveToColumn) {
         int rowOfPieceBeingCaptured = (whiteTurn) ? 5 : 4;
-        int currentColumn;
-        switch (move.charAt(0)) {
-            case 'a':
-                currentColumn = 1;
-                break;
-            case 'b':
-                currentColumn = 2;
-                break;
-            case 'c':
-                currentColumn = 3;
-                break;
-            case 'd':
-                currentColumn = 4;
-                break;
-            case 'e':
-                currentColumn = 5;
-                break;
-            case 'f':
-                currentColumn = 6;
-                break;
-            case 'g':
-                currentColumn = 7;
-                break;
-            case 'h':
-                currentColumn = 8;
-                break;
-            default:
-                System.err.println("Column '" + move.charAt(0) + "' is out of range");
-                return false;
+        int currentColumn = Utils.letterToColumn(move.charAt(0));
+        if(currentColumn < 1 || currentColumn > 8) {
+            System.err.println("Column " + currentColumn + " is out of range");
+            return false;
         }
         Piece pawn = board[rowOfPieceBeingCaptured][currentColumn];
         Piece capturedPiece = board[rowOfPieceBeingCaptured][moveToColumn];
@@ -868,7 +791,6 @@ public class PlayChess {
     private static void initStacks() {
         undoStack = new Stack<>();
         redoStack = new Stack<>();
-        gameLog = new Stack<>();
         pushState(null);
     }
 

@@ -1148,14 +1148,14 @@ public class PlayChess {
                 for (int j = 1; j <= 8; j++) {
                     if (board[i][j] == null) {
                         //String s = "\u2009";
-                        System.out.print("\u3000" + "|");
+                        System.out.print("  |");
                         continue;
                     }
-                    System.out.printf("%1s|", board[i][j].shorthand());
+                    System.out.printf("\u200A%s\u200A|", board[i][j].shorthand());
                 }
                 System.out.print("\n");
             }
-            System.out.println("   a  b  c  d  e  f  g  h");
+            System.out.println("\u2009" + "\u2009"  + "\u2009"  + "\u2009" + "\u2009" + "  a  b  c  d  e  f  g  h");
         }
         else {
             for (int i = 1; i <= 8; i++) {
@@ -1163,14 +1163,14 @@ public class PlayChess {
                 for (int j = 8; j >= 1; j--) {
                     if (board[i][j] == null) {
                         //String s = "\u2009";
-                        System.out.print("\u3000" + "|");
+                        System.out.print("  |");
                         continue;
                     }
-                    System.out.printf("%1s|", board[i][j].shorthand());
+                    System.out.printf("\u200A%s\u200A|", board[i][j].shorthand());
                 }
                 System.out.print("\n");
             }
-            System.out.println("   h  g  f  e  d  c  b  a");
+            System.out.println("\u2009" + "\u2009"  + "\u2009"  + "\u2009" + "\u2009" + "  h  g  f  e  d  c  b  a");
         }
     }
 

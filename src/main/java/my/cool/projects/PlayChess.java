@@ -1381,7 +1381,7 @@ public class PlayChess {
         List<Move> legalMoves = generateLegalMoves(board, computerPlayAs);
         for(Move move : legalMoves) {
             BoardLocation originalLocation = move.piece.boardLocation;
-            Piece prev = computerMakeMove(board, move.piece, move.destination);
+            BeforeMoveState prev = computerMakeMove(board, move.piece, move.destination);
             double score = minimax(board, computerDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
             computerUndoMove(board, move.piece, originalLocation, prev);
             if(whiteTurn) {
@@ -1401,24 +1401,66 @@ public class PlayChess {
         return constructMoveString(bestMove.piece, bestMove.destination);
     }
 
-    private static Piece computerMakeMove(Board chessBoard, Piece piece, BoardLocation destination) {
+    private static BeforeMoveState computerMakeMove(Board chessBoard, Piece piece, BoardLocation destination) {
         Piece prev = chessBoard.board[destination.row][destination.column];
         chessBoard.board[destination.row][destination.column] = piece;
         chessBoard.board[piece.boardLocation.row][piece.boardLocation.column] = null;
         piece.boardLocation = destination;
+        BeforeMoveState prevState = new BeforeMoveState(prev, chessBoard.whiteCanCastleK, chessBoard.whiteCanCastleQ, chessBoard.blackCanCastleK, chessBoard.blackCanCastleQ);
         if(piece.pieceType == Piece.PieceType.KING) {
             if(piece.color == Piece.Color.WHITE) {
-                // TODO: make white unable to castle, but be able to undo that action in undoMove
+                chessBoard.whiteCanCastleK = false;
+                chessBoard.whiteCanCastleQ = false;
+            }
+            else {
+                chessBoard.blackCanCastleK = false;
+                chessBoard.blackCanCastleQ = false;
             }
         }
-
-        return prev;
+        else if(piece.pieceType == Piece.PieceType.ROOK) {
+            if(piece.color == Piece.Color.WHITE) {
+                if(piece.boardLocation.chessLingo.equals("a1")) {
+                    chessBoard.whiteCanCastleQ = false;
+                }
+                else if(piece.boardLocation.chessLingo.equals("h1")) {
+                    chessBoard.whiteCanCastleK = false;
+                }
+            }
+            else {
+                if(piece.boardLocation.chessLingo.equals("a8")) {
+                    chessBoard.blackCanCastleQ = false;
+                }
+                else if(piece.boardLocation.chessLingo.equals("h8")) {
+                    chessBoard.blackCanCastleK = false;
+                }
+            }
+        }
+        return prevState;
     }
 
-    private static void computerUndoMove(Board chessBoard, Piece piece, BoardLocation originalLocation, Piece prev) {
+    private static class BeforeMoveState {
+        Piece capturedPiece;
+        boolean prevWhiteCanCastleK;
+        boolean prevWhiteCanCastleQ;
+        boolean prevBlackCanCastleK;
+        boolean prevBlackCanCastleQ;
+        public BeforeMoveState(Piece capturedPiece, boolean prevWhiteCanCastleK, boolean prevWhiteCanCastleQ, boolean prevBlackCanCastleK, boolean prevBlackCanCastleQ) {
+            this.capturedPiece = capturedPiece;
+            this.prevBlackCanCastleK = prevBlackCanCastleK;
+            this.prevBlackCanCastleQ = prevBlackCanCastleQ;
+            this.prevWhiteCanCastleK = prevWhiteCanCastleK;
+            this.prevWhiteCanCastleQ = prevWhiteCanCastleQ;
+        }
+    }
+
+    private static void computerUndoMove(Board chessBoard, Piece piece, BoardLocation originalLocation, BeforeMoveState prev) {
         chessBoard.board[originalLocation.row][originalLocation.column] = piece;
-        chessBoard.board[piece.boardLocation.row][piece.boardLocation.column] = prev;
+        chessBoard.board[piece.boardLocation.row][piece.boardLocation.column] = prev.capturedPiece;
         piece.boardLocation = originalLocation;
+        chessBoard.whiteCanCastleK = prev.prevWhiteCanCastleK;
+        chessBoard.whiteCanCastleQ = prev.prevWhiteCanCastleQ;
+        chessBoard.blackCanCastleK = prev.prevBlackCanCastleK;
+        chessBoard.blackCanCastleQ = prev.prevBlackCanCastleQ;
     }
 
     private static double minimax(Board board, int depth, double alpha, double beta, boolean whiteMove) {
@@ -1432,7 +1474,7 @@ public class PlayChess {
 
             for (Move move : legalMoves) {
                 BoardLocation originalLocation = move.piece.boardLocation;
-                Piece prev = computerMakeMove(board, move.piece, move.destination);
+                BeforeMoveState prev = computerMakeMove(board, move.piece, move.destination);
                 double score = minimax(board, depth - 1, alpha, beta, false);
                 computerUndoMove(board, move.piece, originalLocation, prev);
                 maxScore = Math.max(maxScore, score);
@@ -1450,7 +1492,7 @@ public class PlayChess {
 
             for (Move move : legalMoves) {
                 BoardLocation originalLocation = move.piece.boardLocation;
-                Piece prev = computerMakeMove(board, move.piece, move.destination);
+                BeforeMoveState prev = computerMakeMove(board, move.piece, move.destination);
                 double score = minimax(board, depth - 1, alpha, beta, true);
                 computerUndoMove(board, move.piece, originalLocation, prev);
                 minScore = Math.min(minScore, score);
@@ -1653,7 +1695,7 @@ public class PlayChess {
     }
 
     private static boolean putMeInCheck(Board chessBoard, Move move, BoardLocation kingLocation) {
-        Piece capturedPiece = computerMakeMove(chessBoard, move.piece, move.destination);
+        BeforeMoveState capturedPiece = computerMakeMove(chessBoard, move.piece, move.destination);
         boolean putsInCheck = false;
         outerLoop:
         for(int i = 1; i <= 8; i++) {

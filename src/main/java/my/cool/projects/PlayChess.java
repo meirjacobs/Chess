@@ -1375,53 +1375,66 @@ public class PlayChess {
     }
 
     public static String computerTurn() {
-        double bestScore = Integer.MIN_VALUE;
+        double bestScore = whiteTurn ? Integer.MIN_VALUE: Integer.MAX_VALUE;
         Move bestMove = null;
 
-        List<Move> legalMoves = generateLegalMoves(board.board, computerPlayAs);
+        List<Move> legalMoves = generateLegalMoves(board, computerPlayAs);
         for(Move move : legalMoves) {
             BoardLocation originalLocation = move.piece.boardLocation;
-            Piece prev = computerMakeMove(move.piece, move.destination);
-            double score = minimax(board.board, computerDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
-            computerUndoMove(move.piece, originalLocation, prev);
-            if(score > bestScore) {
-                bestScore = score;
-                bestMove = move;
+            Piece prev = computerMakeMove(board, move.piece, move.destination);
+            double score = minimax(board, computerDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
+            computerUndoMove(board, move.piece, originalLocation, prev);
+            if(whiteTurn) {
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+            else {
+                if(score < bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
             }
         }
 
         return constructMoveString(bestMove.piece, bestMove.destination);
     }
 
-    private static Piece computerMakeMove(Piece piece, BoardLocation destination) {
-        Piece prev = board.board[destination.row][destination.column];
-        board.board[destination.row][destination.column] = piece;
-        board.board[piece.boardLocation.row][piece.boardLocation.column] = null;
+    private static Piece computerMakeMove(Board chessBoard, Piece piece, BoardLocation destination) {
+        Piece prev = chessBoard.board[destination.row][destination.column];
+        chessBoard.board[destination.row][destination.column] = piece;
+        chessBoard.board[piece.boardLocation.row][piece.boardLocation.column] = null;
         piece.boardLocation = destination;
+        if(piece.pieceType == Piece.PieceType.KING) {
+            if(piece.color == Piece.Color.WHITE) {
+                // TODO: make white unable to castle, but be able to undo that action in undoMove
+            }
+        }
 
         return prev;
     }
 
-    private static void computerUndoMove(Piece piece, BoardLocation originalLocation, Piece prev) {
-        board.board[originalLocation.row][originalLocation.column] = piece;
-        board.board[piece.boardLocation.row][piece.boardLocation.column] = prev;
+    private static void computerUndoMove(Board chessBoard, Piece piece, BoardLocation originalLocation, Piece prev) {
+        chessBoard.board[originalLocation.row][originalLocation.column] = piece;
+        chessBoard.board[piece.boardLocation.row][piece.boardLocation.column] = prev;
         piece.boardLocation = originalLocation;
     }
 
-    private static double minimax(Piece[][] board, int depth, double alpha, double beta, boolean maximizingPlayer) {
+    private static double minimax(Board board, int depth, double alpha, double beta, boolean whiteMove) {
         if (depth == 0/* || gameIsOver(board)*/) {
             return evaluateBoard(board);
         }
 
-        if (maximizingPlayer) {
-            double maxScore = Double.MIN_VALUE;
+        if (whiteMove) {
+            double maxScore = Integer.MIN_VALUE;
             List<Move> legalMoves = generateLegalMoves(board, computerPlayAs);
 
             for (Move move : legalMoves) {
                 BoardLocation originalLocation = move.piece.boardLocation;
-                Piece prev = computerMakeMove(move.piece, move.destination);
+                Piece prev = computerMakeMove(board, move.piece, move.destination);
                 double score = minimax(board, depth - 1, alpha, beta, false);
-                computerUndoMove(move.piece, originalLocation, prev);
+                computerUndoMove(board, move.piece, originalLocation, prev);
                 maxScore = Math.max(maxScore, score);
                 alpha = Math.max(alpha, score);
                 if (beta <= alpha) {
@@ -1431,15 +1444,15 @@ public class PlayChess {
 
             return maxScore;
         } else {
-            double minScore = Double.MAX_VALUE;
+            double minScore = Integer.MAX_VALUE;
             Piece.Color color = computerPlayAs == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
             List<Move> legalMoves = generateLegalMoves(board, color);
 
             for (Move move : legalMoves) {
                 BoardLocation originalLocation = move.piece.boardLocation;
-                Piece prev = computerMakeMove(move.piece, move.destination);
+                Piece prev = computerMakeMove(board, move.piece, move.destination);
                 double score = minimax(board, depth - 1, alpha, beta, true);
-                computerUndoMove(move.piece, originalLocation, prev);
+                computerUndoMove(board, move.piece, originalLocation, prev);
                 minScore = Math.min(minScore, score);
                 beta = Math.min(beta, score);
                 if (beta <= alpha) {
@@ -1451,7 +1464,7 @@ public class PlayChess {
         }
     }
 
-    private static double evaluateBoard(Piece[][] board) {
+    private static double evaluateBoard(Board board) {
         // Measure: score
         return measureBoardScore(board);
     }
@@ -1506,21 +1519,23 @@ public class PlayChess {
         return false;
     }
 
-    private static List<Move> generateLegalMoves(Piece[][] board, Piece.Color color) {
+    private static List<Move> generateLegalMoves(Board chessBoard, Piece.Color color) {
+        BoardLocation kingLocation = null;
         List<Move> validMoves = new ArrayList<>();
         for(int i = 1; i <= 8; i++) {
             for(int j = 1; j <= 8; j++) {
-                if(board[i][j] == null || board[i][j].color != color) continue;
-                Piece piece = board[i][j];
+                if(chessBoard.board[i][j] == null) continue;
+                Piece piece = chessBoard.board[i][j];
+                if(piece.pieceType == Piece.PieceType.KING && piece.color == color) kingLocation = new BoardLocation(i, j);
                 for(int x = 1; x <= 8; x++) {
                     for (int y = 1; y <= 8; y++) {
-                        if (board[x][y] == null) {
-                            if (piece.validMove(board, i, j, x, y, false, false)) {
-                                validMoves.add(new Move(piece, new BoardLocation(x, y)));
+                        if (chessBoard.board[x][y] == null) {
+                            if (piece.validMove(chessBoard.board, i, j, x, y, false, false)) {
+                                validMoves.add(new Move(piece, new BoardLocation(x, y), false));
                             }
                         } else {
-                            if (piece.validMove(board, i, j, x, y, true, false)) {
-                                validMoves.add(new Move(piece, new BoardLocation(x, y)));
+                            if (piece.validMove(chessBoard.board, i, j, x, y, true, false)) {
+                                validMoves.add(new Move(piece, new BoardLocation(x, y), true));
                             }
                         }
                     }
@@ -1528,33 +1543,170 @@ public class PlayChess {
             }
         }
         
-        // En passant
-        
+        // Castling
+        if(chessBoard.whiteTurn) {
+            if(chessBoard.whiteCanCastleK) {
+                boolean canCastle = true;
+                for(Move move : validMoves) {
+                    if(move.piece.color == Piece.Color.BLACK && (move.destination.chessLingo.equals("e1") || 
+                            move.destination.chessLingo.equals("f1") || move.destination.chessLingo.equals("g1"))) {
+                        canCastle = false;
+                        break;
+                    }
+                }
+                if(canCastle) {
+                    validMoves.add(new Move(chessBoard.board[1][5], new BoardLocation("g1"), false, Move.SpecialMove.CASTLE_KINGSIDE));
+                }
+            }
+            if(chessBoard.whiteCanCastleQ) {
+                boolean canCastle = true;
+                for(Move move : validMoves) {
+                    if(move.piece.color == Piece.Color.BLACK && (move.destination.chessLingo.equals("e1") ||
+                            move.destination.chessLingo.equals("d1") || move.destination.chessLingo.equals("c1"))) {
+                        canCastle = false;
+                        break;
+                    }
+                }
+                if(canCastle) {
+                    validMoves.add(new Move(chessBoard.board[1][5], new BoardLocation("c1"), false, Move.SpecialMove.CASTLE_QUEENSIDE));
+                }
+            }
+        }
+        else {
+            if(chessBoard.blackCanCastleK) {
+                boolean canCastle = true;
+                for(Move move : validMoves) {
+                    if(move.piece.color == Piece.Color.WHITE && (move.destination.chessLingo.equals("e8") ||
+                            move.destination.chessLingo.equals("f8") || move.destination.chessLingo.equals("g8"))) {
+                        canCastle = false;
+                        break;
+                    }
+                }
+                if(canCastle) {
+                    validMoves.add(new Move(chessBoard.board[1][5], new BoardLocation("g8"), false, Move.SpecialMove.CASTLE_KINGSIDE));
+                }
+            }
+            if(chessBoard.blackCanCastleQ) {
+                boolean canCastle = true;
+                for(Move move : validMoves) {
+                    if(move.piece.color == Piece.Color.WHITE && (move.destination.chessLingo.equals("e8") ||
+                            move.destination.chessLingo.equals("d8") || move.destination.chessLingo.equals("c8"))) {
+                        canCastle = false;
+                        break;
+                    }
+                }
+                if(canCastle) {
+                    validMoves.add(new Move(chessBoard.board[1][5], new BoardLocation("c8"), false, Move.SpecialMove.CASTLE_QUEENSIDE));
+                }
+            }
+        }
+
+        // Remove oppo color moves
+        validMoves.removeIf(move -> move.piece.color != color);
+
+        // En Passant
+        int pieceRow = chessBoard.whiteTurn ? 5 : 4;
+        int ogLocRow = chessBoard.whiteTurn ? 7 : 2;
+        int destRow = chessBoard.whiteTurn ? 6 : 3;
+        if (chessBoard.lastMove != null && chessBoard.lastMove.piece.pieceType == Piece.PieceType.PAWN && chessBoard.lastMove.destination.row == pieceRow
+                && chessBoard.lastMove.originalLocation.row == ogLocRow) {
+            if(chessBoard.lastMove.destination.column + 1 <= 8
+                    && chessBoard.board[pieceRow][chessBoard.lastMove.destination.column + 1] != null
+                    && chessBoard.board[pieceRow][chessBoard.lastMove.destination.column + 1].color == Piece.Color.WHITE
+                    && chessBoard.board[pieceRow][chessBoard.lastMove.destination.column + 1].pieceType == Piece.PieceType.PAWN) {
+                validMoves.add(new Move(chessBoard.board[pieceRow][chessBoard.lastMove.destination.column + 1],
+                        new BoardLocation(destRow, chessBoard.lastMove.destination.column), true, Move.SpecialMove.EN_PASSANT));
+            }
+            if(chessBoard.lastMove.destination.column - 1 >= 0
+                    && chessBoard.board[pieceRow][chessBoard.lastMove.destination.column - 1] != null
+                    && chessBoard.board[pieceRow][chessBoard.lastMove.destination.column - 1].color == Piece.Color.WHITE
+                    && chessBoard.board[pieceRow][chessBoard.lastMove.destination.column - 1].pieceType == Piece.PieceType.PAWN) {
+                validMoves.add(new Move(chessBoard.board[pieceRow][chessBoard.lastMove.destination.column - 1],
+                        new BoardLocation(destRow, chessBoard.lastMove.destination.column), true, Move.SpecialMove.EN_PASSANT));
+            }
+        }
+
+        // Promotion
+        destRow = chessBoard.whiteTurn ? 8 : 1;
+        ListIterator<Move> iterator = validMoves.listIterator();
+        while(iterator.hasNext()) {
+            Move move = iterator.next();
+            if(move.piece.pieceType == Piece.PieceType.PAWN && move.piece.boardLocation.row == destRow) {
+                move.special = Move.SpecialMove.PROMOTION;
+                move.promotionType = Piece.PieceType.KNIGHT;
+                iterator.add(new Move(move.piece, move.destination, move.capture, Move.SpecialMove.PROMOTION, Piece.PieceType.BISHOP));
+                iterator.add(new Move(move.piece, move.destination, move.capture, Move.SpecialMove.PROMOTION, Piece.PieceType.ROOK));
+                iterator.add(new Move(move.piece, move.destination, move.capture, Move.SpecialMove.PROMOTION, Piece.PieceType.QUEEN));
+            }
+        }
+
+        // Make sure no moves put you in check
+        iterator = validMoves.listIterator();
+        while(iterator.hasNext()) {
+            Move move = iterator.next();
+            if(putMeInCheck(chessBoard, move, kingLocation)) {
+                iterator.remove();
+            }
+        }
 
         return validMoves;
     }
 
+    private static boolean putMeInCheck(Board chessBoard, Move move, BoardLocation kingLocation) {
+        Piece capturedPiece = computerMakeMove(chessBoard, move.piece, move.destination);
+        boolean putsInCheck = false;
+        outerLoop:
+        for(int i = 1; i <= 8; i++) {
+            for(int j = 1; j <= 8; j++) {
+                if(chessBoard.board[i][j] == null || chessBoard.board[i][j].color == move.piece.color) continue;
+                Piece piece = chessBoard.board[i][j];
+                if(piece.validMove(chessBoard.board, i, j, kingLocation.row, kingLocation.column, true, false)) {
+                    putsInCheck = true;
+                    break outerLoop;
+                }
+            }
+        }
+        computerUndoMove(chessBoard, move.piece, move.originalLocation, capturedPiece);
+        return putsInCheck;
+    }
+
     public static class Move {
         Piece piece;
+        BoardLocation originalLocation;
         BoardLocation destination;
-        public Move(Piece piece, BoardLocation destination) {
+        boolean capture;
+        SpecialMove special;
+        Piece.PieceType promotionType;
+        public Move(Piece piece, BoardLocation destination, boolean capture) {
             this.piece = piece;
+            this.originalLocation = piece.boardLocation;
             this.destination = destination;
+            this.capture = capture;
+        }
+        
+        public Move(Piece piece, BoardLocation destination, boolean capture, SpecialMove special) {
+            this(piece, destination, capture);
+            this.special = special;
+        }
+
+        public Move(Piece piece, BoardLocation destination, boolean capture, SpecialMove special, Piece.PieceType promotionType) {
+            this(piece, destination, capture, special);
+            this.promotionType = promotionType;
         }
 
         public enum SpecialMove {EN_PASSANT, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, PROMOTION}
     }
 
-    private static int measureBoardScore(Piece[][] board) {
+    private static int measureBoardScore(Board chessBoard) {
         int score = 0;
         for(int i = 1; i <= 8; i++) {
             for(int j = 1; j <= 8; j++) {
-                if(board[i][j] != null) {
-                    if(board[i][j].color == Piece.Color.WHITE) {
-                        score += board[i][j].value;
+                if(chessBoard.board[i][j] != null) {
+                    if(chessBoard.board[i][j].color == Piece.Color.WHITE) {
+                        score += chessBoard.board[i][j].value;
                     }
                     else {
-                        score -= board[i][j].value;
+                        score -= chessBoard.board[i][j].value;
                     }
                 }
             }

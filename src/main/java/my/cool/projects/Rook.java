@@ -5,6 +5,7 @@ public class Rook extends Piece {
     public Rook(Color color, BoardLocation boardLocation) {
         super(color, boardLocation);
         pieceType = PieceType.ROOK;
+        value = 5;
     }
 
     @Override

@@ -5,6 +5,7 @@ public class Knight extends Piece {
     public Knight(Color color, BoardLocation boardLocation) {
         super(color, boardLocation);
         pieceType = PieceType.KNIGHT;
+        value = 3;
     }
 
     @Override

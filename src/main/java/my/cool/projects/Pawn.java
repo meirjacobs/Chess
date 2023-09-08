@@ -5,6 +5,7 @@ public class Pawn extends Piece {
     public Pawn(Color color, BoardLocation boardLocation) {
         super(color, boardLocation);
         pieceType = PieceType.PAWN;
+        value = 1;
     }
 
     @Override

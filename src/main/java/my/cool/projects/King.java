@@ -5,6 +5,7 @@ public class King extends Piece {
     public King(Color color, BoardLocation boardLocation) {
         super(color, boardLocation);
         pieceType = PieceType.KING;
+        value = 1000;
     }
 
     @Override

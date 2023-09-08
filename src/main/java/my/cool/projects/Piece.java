@@ -6,6 +6,7 @@ public abstract class Piece {
     Color color;
     BoardLocation boardLocation;
     PieceType pieceType;
+    int value;
 
     public Piece(Color color, BoardLocation boardLocation) {
         switch (color) {

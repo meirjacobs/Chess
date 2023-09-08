@@ -8,4 +8,15 @@ public class Utils {
     public static int letterToColumn(char c) {
         return c - 'a' + 1;
     }
+
+    public static String pieceToAbbreviation(Piece.PieceType type) {
+        return switch (type) {
+            case PAWN -> "";
+            case KNIGHT -> "N";
+            case BISHOP -> "B";
+            case ROOK -> "R";
+            case QUEEN -> "Q";
+            case KING -> "K";
+        };
+    }
 }

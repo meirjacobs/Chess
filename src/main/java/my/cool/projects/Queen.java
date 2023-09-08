@@ -5,6 +5,8 @@ public class Queen extends Piece {
     public Queen(Color color, BoardLocation boardLocation) {
         super(color, boardLocation);
         pieceType = PieceType.QUEEN;
+        value = 9;
+
     }
 
     @Override

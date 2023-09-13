@@ -23,6 +23,7 @@ public class PlayChess {
     private static int score;
     private static Piece.Color computerPlayAs;
     private static int computerDepth;
+    private static boolean inputFile;
 
     public static void main(String[] args) throws FileNotFoundException {
         initializeBoard();
@@ -36,6 +37,7 @@ public class PlayChess {
         else {
             File file = new File(args[0]);
             scanner = new Scanner(file);
+            inputFile = true;
         }
         boolean multiplayer = gameType();
         help();
@@ -210,7 +212,10 @@ public class PlayChess {
             String move;
             if((whiteTurn && computerPlayAs == Piece.Color.BLACK) || (!whiteTurn && computerPlayAs == Piece.Color.WHITE)) {
                 System.out.println("\nYour Turn: ");
-                if (!scanner.hasNext()) break;
+                if (!scanner.hasNext()) {
+                    inputFile = false;
+                    scanner = new Scanner(System.in);
+                }
                 move = scanner.next();
                 if (move.equals("undo")) {
                     undo();
@@ -230,10 +235,22 @@ public class PlayChess {
                 }
             }
             else {
-                move = computerTurn();
+                if(inputFile && scanner.hasNext()) {
+                    move = scanner.next();
+                }
+                else {
+                    inputFile = false;
+                    move = computerTurn();
+                }
                 System.out.println(move);
             }
-            if (!validInput(move)) continue;
+            if (!validInput(move)) {
+                if ((whiteTurn && computerPlayAs == Piece.Color.BLACK) || (!whiteTurn && computerPlayAs == Piece.Color.WHITE)) {
+                    do {
+                        move = scanner.next();
+                    } while (!validInput(move));
+                }
+            }
             Piece.PieceType pieceType = determinePiece(move);
             boolean capture = determineCapture(move);
             int toRow = determineMoveToRow(move);
@@ -258,8 +275,14 @@ public class PlayChess {
                         System.err.printf("Piece cannot move to [%d, %d]\n", toRow, toColumn);
                         continue;
                     }
-                    Piece piece = identifyMovePiece(set, pieceType, color, move);
-                    if (piece == null) continue;
+                    Piece piece;
+                    do {
+                        piece = identifyMovePiece(set, pieceType, color, move);
+                        if (piece == null) {
+                            System.err.println("User please input computer move");
+                            move = scanner.next();
+                        }
+                    } while (piece == null);
                     if (!validMove(piece, toRow, toColumn, capture, true)) continue;
                     originalLocation = piece.boardLocation;
                     BoardLocation moveTo = new BoardLocation(toRow, toColumn);
@@ -1515,16 +1538,18 @@ public class PlayChess {
         Piece.PieceType type = piece.pieceType;
         Set<Piece> possiblePieces = new HashSet<>();
         for(Piece p : squaresToPieces.get(square)) {
-            if(p.pieceType == type && p.color == piece.color) possiblePieces.add(p);
+            if(p.pieceType == piece.pieceType && p.color == piece.color) possiblePieces.add(p);
         }
         boolean capture = board.board[square.row][square.column] != null;
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(Utils.pieceToAbbreviation(type));
         if(possiblePieces.size() > 1) {
-            if(multipleSameColumn(possiblePieces)) {
+            boolean sameColumn = multipleSameColumn(possiblePieces);
+            boolean sameRow = multipleSameRow(possiblePieces);
+            if(sameColumn || !sameRow) {
                 stringBuilder.append(Utils.columnToLetter(piece.boardLocation.column));
             }
-            if(multipleSameRow(possiblePieces)) {
+            if(sameRow) {
                 stringBuilder.append(piece.boardLocation.row);
             }
         }
@@ -1696,6 +1721,9 @@ public class PlayChess {
 
     private static boolean putMeInCheck(Board chessBoard, Move move, BoardLocation kingLocation) {
         BeforeMoveState capturedPiece = computerMakeMove(chessBoard, move.piece, move.destination);
+        if(move.piece.pieceType == Piece.PieceType.KING) {
+            kingLocation = move.piece.boardLocation;
+        }
         boolean putsInCheck = false;
         outerLoop:
         for(int i = 1; i <= 8; i++) {

@@ -1,8 +1,10 @@
 package my.cool.projects;
-import org.junit.*;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.Locale;
+
+import org.junit.jupiter.api.*;
 
 public class PlayChessTest {
 
@@ -34,5 +36,12 @@ public class PlayChessTest {
     @Test
     public void run() throws FileNotFoundException {
         PlayChess.main(new String[] {});
+    }
+
+    @Test
+    public void boardStartScore() {
+        PlayChess.initializeBoard();
+        int score = PlayChess.measureBoardScore(PlayChess.board);
+        Assertions.assertEquals(0, score);
     }
 }

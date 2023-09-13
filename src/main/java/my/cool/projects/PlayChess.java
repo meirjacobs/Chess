@@ -8,7 +8,7 @@ public class PlayChess {
     private static HashMap<Piece, Set<BoardLocation>> piecesToSquares;
     private static HashMap<BoardLocation, Set<Piece>> squaresToPieces;
     private static BoardMap boardMap;
-    private static Board board;
+    public static Board board;
     private static BoardLocation whiteKingLocation;
     private static BoardLocation blackKingLocation;
     protected static boolean whiteInCheck;
@@ -231,6 +231,7 @@ public class PlayChess {
             }
             else {
                 move = computerTurn();
+                System.out.println(move);
             }
             if (!validInput(move)) continue;
             Piece.PieceType pieceType = determinePiece(move);
@@ -876,7 +877,7 @@ public class PlayChess {
         return true;
     }
 
-    private static void initializeBoard() {
+    public static void initializeBoard() {
         Piece[][] chessBoard = new Piece[9][9];
         chessBoard[1][1] = new Rook(Piece.Color.WHITE, new BoardLocation(1,1));
         chessBoard[1][2] = new Knight(Piece.Color.WHITE, new BoardLocation(1,2));
@@ -1470,7 +1471,7 @@ public class PlayChess {
 
         if (whiteMove) {
             double maxScore = Integer.MIN_VALUE;
-            List<Move> legalMoves = generateLegalMoves(board, computerPlayAs);
+            List<Move> legalMoves = generateLegalMoves(board, Piece.Color.WHITE);
 
             for (Move move : legalMoves) {
                 BoardLocation originalLocation = move.piece.boardLocation;
@@ -1487,8 +1488,7 @@ public class PlayChess {
             return maxScore;
         } else {
             double minScore = Integer.MAX_VALUE;
-            Piece.Color color = computerPlayAs == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
-            List<Move> legalMoves = generateLegalMoves(board, color);
+            List<Move> legalMoves = generateLegalMoves(board, Piece.Color.BLACK);
 
             for (Move move : legalMoves) {
                 BoardLocation originalLocation = move.piece.boardLocation;
@@ -1515,7 +1515,7 @@ public class PlayChess {
         Piece.PieceType type = piece.pieceType;
         Set<Piece> possiblePieces = new HashSet<>();
         for(Piece p : squaresToPieces.get(square)) {
-            if(p.pieceType == type) possiblePieces.add(p);
+            if(p.pieceType == type && p.color == piece.color) possiblePieces.add(p);
         }
         boolean capture = board.board[square.row][square.column] != null;
         StringBuilder stringBuilder = new StringBuilder();
@@ -1702,7 +1702,7 @@ public class PlayChess {
             for(int j = 1; j <= 8; j++) {
                 if(chessBoard.board[i][j] == null || chessBoard.board[i][j].color == move.piece.color) continue;
                 Piece piece = chessBoard.board[i][j];
-                if(piece.validMove(chessBoard.board, i, j, kingLocation.row, kingLocation.column, true, false)) {
+                if(kingLocation == null || piece.validMove(chessBoard.board, i, j, kingLocation.row, kingLocation.column, true, false)) {
                     putsInCheck = true;
                     break outerLoop;
                 }
@@ -1739,7 +1739,7 @@ public class PlayChess {
         public enum SpecialMove {EN_PASSANT, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, PROMOTION}
     }
 
-    private static int measureBoardScore(Board chessBoard) {
+    public static int measureBoardScore(Board chessBoard) {
         int score = 0;
         for(int i = 1; i <= 8; i++) {
             for(int j = 1; j <= 8; j++) {

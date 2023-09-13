@@ -40,7 +40,7 @@ public class Pawn extends Piece {
                 currentRow--;
                 inc = -1;
             }
-            for(; currentRow < moveToRow; currentRow += inc) {
+            for(; currentRow != moveToRow; currentRow += inc) {
                 if (board[currentRow][currentColumn] != null) {
                     if(printErrors) System.err.println("Cannot move Pawn because there is a piece in the way of the destination");
                     return false;

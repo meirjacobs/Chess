@@ -10,7 +10,7 @@ public class Rook extends Piece {
 
     @Override
     public boolean validMove(Piece[][] board, int currentRow, int currentColumn, int moveToRow, int moveToColumn, boolean capture, boolean printErrors) {
-        validateInput(board, currentRow, currentColumn, moveToRow, moveToColumn);
+        if(!validateInput(board, currentRow, currentColumn, moveToRow, moveToColumn)) return false;
         if(!capture) {
             if(board[moveToRow][moveToColumn] != null) {
                 if(printErrors) System.err.println("Move-to square is already occupied");

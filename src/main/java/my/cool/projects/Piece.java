@@ -28,19 +28,24 @@ public abstract class Piece {
 
     protected boolean validateInput(Piece[][] board, int currentRow, int currentColumn, int moveToRow, int moveToColumn) {
         if(board == null) {
-            System.err.println("Null board input");
+//            System.err.println("Null board input");
             return false;
         }
         if(board.length != 9 || board[1].length != 9) {
-            System.err.println("Board must be 9 x 9");
+//            System.err.println("Board must be 9 x 9");
             return false;
         }
         if(currentRow < 1 || currentRow > 8 || currentColumn < 1 || currentColumn > 8 ||moveToRow < 1 || moveToRow > 8 || moveToColumn < 1 || moveToColumn > 8) {
-            System.err.println("Invalid current or intended location input. Must be between 1 and 8");
+//            System.err.println("Invalid current or intended location input. Must be between 1 and 8");
             return false;
         }
         if(board[currentRow][currentColumn] == null) {
-            System.err.println("No piece at [" + currentRow + ", " + currentColumn + "]");
+            PlayChess.printBoard(true);
+            try {
+                throw new Exception("No piece at [" + currentRow + ", " + currentColumn + "]");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             return false;
         }
         return true;

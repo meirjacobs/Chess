@@ -10,7 +10,7 @@ public class Knight extends Piece {
 
     @Override
     public boolean validMove(Piece[][] board, int currentRow, int currentColumn, int moveToRow, int moveToColumn, boolean capture, boolean printErrors) {
-        validateInput(board, currentRow, currentColumn, moveToRow, moveToColumn);
+        if(!validateInput(board, currentRow, currentColumn, moveToRow, moveToColumn)) return false;
         int deltaX = moveToRow - currentRow;
         int deltaY = moveToColumn - currentColumn;
         if(!((Math.abs(deltaX) == 2 || Math.abs(deltaX) == 1) && (Math.abs(deltaY) == 2 || Math.abs(deltaY) == 1)) || Math.abs(deltaX) == Math.abs(deltaY)) {

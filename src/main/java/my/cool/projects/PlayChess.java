@@ -22,10 +22,12 @@ public class PlayChess {
     private static Piece[][] lastBoardInBoardMap;
     private static Scanner scanner;
     private static Piece.Color computerPlayAs;
+    private static int computerDepth;
     private static double nTotMovesInDepth = 0.0;
     private static Random random = new Random();
     private static boolean inputFile;
     private static ExecutorService executorService;
+    private static boolean multithreaded;
 
     public static void main(String[] args) throws FileNotFoundException {
         initializeBoard();
@@ -46,15 +48,17 @@ public class PlayChess {
         if(multiplayer) multiplayerGame();
         else {
             computerOptions();
-            executorService = Executors.newFixedThreadPool(50);
-            int seconds;
-            try {
-                System.out.println("How many seconds per turn should the engine run for?");
-                seconds = Integer.parseInt(scanner.next());
-            } catch (Exception e) {
-                seconds = 10;
+            if(multithreaded) {
+                executorService = Executors.newFixedThreadPool(50);
+                int seconds;
+                try {
+                    System.out.println("How many seconds per turn should the engine run for?");
+                    seconds = Integer.parseInt(scanner.next());
+                } catch (Exception e) {
+                    seconds = 10;
+                }
+                nTotMovesInDepth = seconds * 336842.0;
             }
-            nTotMovesInDepth = seconds * 336842.0;
             computerGame();
         }
     }
@@ -88,6 +92,19 @@ public class PlayChess {
                 computerPlayAs = Piece.Color.WHITE;
                 break;
             }
+        }
+        System.out.println("Regular or multithreaded?");
+        String selection = scanner.next();
+        while(!selection.equalsIgnoreCase("regular") && !selection.equalsIgnoreCase("multithreaded")) {
+            System.out.println("Regular or multithreaded?");
+            selection = scanner.next();
+        }
+        multithreaded = (selection.equalsIgnoreCase("multithreaded"));
+        System.out.println("Set computer depth");
+        try {
+            computerDepth = Integer.parseInt(scanner.next());
+        } catch (Exception e) {
+            computerDepth = 4;
         }
     }
 
@@ -1398,50 +1415,70 @@ public class PlayChess {
 
         List<Move> legalMoves = generateLegalMoves(board, computerPlayAs);
 
-        try {
-            // Create a list to store the results of each move evaluation.
-            List<Future<Double>> futures = new ArrayList<>();
-            double depth = calculateDepth(legalMoves.size(), nTotMovesInDepth);
+        if(multithreaded) {
+            try {
+                // Create a list to store the results of each move evaluation.
+                List<Future<Double>> futures = new ArrayList<>();
+                double depth = calculateDepth(legalMoves.size(), nTotMovesInDepth);
 //            double depth = 5;
-            System.out.println(depth + " Depth");
+                System.out.println(depth + " Depth");
 
-            for (Move move : legalMoves) {
-                // Submit each move evaluation as a task to the thread pool.
-                Board boardCopy = copyBoard(board);
-                move.piece = boardCopy.board[move.piece.boardLocation.row][move.piece.boardLocation.column];
-                Future<Double> future = executorService.submit(() -> {
-                    BeforeMoveState prev = computerMakeMove(boardCopy, move);
-                    long start = System.nanoTime();
-                    double score = minimax(boardCopy, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
-                    long end = System.nanoTime();
-                    System.out.println((end - start) / 1000000000.0 + " nanoseconds");
-                    computerUndoMove(boardCopy, move, prev);
-                    return score;
-                });
-                futures.add(future);
+                for (Move move : legalMoves) {
+                    // Submit each move evaluation as a task to the thread pool.
+                    Board boardCopy = copyBoard(board);
+                    move.piece = boardCopy.board[move.piece.boardLocation.row][move.piece.boardLocation.column];
+                    Future<Double> future = executorService.submit(() -> {
+                        BeforeMoveState prev = computerMakeMove(boardCopy, move);
+                        long start = System.nanoTime();
+                        double score = minimax(boardCopy, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
+                        long end = System.nanoTime();
+                        System.out.println((end - start) / 1000000000.0 + " nanoseconds");
+                        computerUndoMove(boardCopy, move, prev);
+                        return score;
+                    });
+                    futures.add(future);
+                }
+
+                // Wait for all move evaluations to complete and collect the results.
+                for (int i = 0; i < legalMoves.size(); i++) {
+                    double score = futures.get(i).get();
+
+                    if (whiteTurn) {
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = legalMoves.get(i);
+                        }
+                    } else {
+                        if (score < bestScore) {
+                            bestScore = score;
+                            bestMove = legalMoves.get(i);
+                        }
+                    }
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                // Handle exceptions as needed.
+                e.printStackTrace();
             }
-
-            // Wait for all move evaluations to complete and collect the results.
-            for (int i = 0; i < legalMoves.size(); i++) {
-                double score = futures.get(i).get();
-
+            System.out.println((System.nanoTime() - beg) / 1000000000.0 + " overall");
+        }
+        else {
+            for(Move move : legalMoves) {
+                BeforeMoveState prev = computerMakeMove(board, move);
+                double score = minimax(board, computerDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
+                computerUndoMove(board, move, prev);
                 if (whiteTurn) {
                     if (score > bestScore) {
                         bestScore = score;
-                        bestMove = legalMoves.get(i);
+                        bestMove = move;
                     }
                 } else {
                     if (score < bestScore) {
                         bestScore = score;
-                        bestMove = legalMoves.get(i);
+                        bestMove = move;
                     }
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
-            // Handle exceptions as needed.
-            e.printStackTrace();
         }
-        System.out.println((System.nanoTime() - beg) / 1000000000.0 + " overall");
         return constructMoveString(bestMove.piece, bestMove.destination);
     }
 
@@ -1452,6 +1489,9 @@ public class PlayChess {
                 chessBoard.board[1][7] = move.piece;
                 chessBoard.board[1][6] = chessBoard.board[1][8];
                 chessBoard.board[1][7].boardLocation = new BoardLocation(1, 7);
+                if(chessBoard.board[1][6]==null) {
+                    int a = 8;
+                }
                 chessBoard.board[1][6].boardLocation = new BoardLocation(1, 6);
                 chessBoard.board[1][8] = null;
                 chessBoard.board[1][5] = null;
@@ -1744,7 +1784,7 @@ public class PlayChess {
         
         // Castling
         if(chessBoard.whiteTurn) {
-            if(chessBoard.whiteCanCastleK && chessBoard.board[1][6] == null && chessBoard.board[1][7] == null) {
+            if(chessBoard.whiteCanCastleK && chessBoard.board[1][5] != null && chessBoard.board[1][5].pieceType.equals(Piece.PieceType.KING) && chessBoard.board[1][8] != null && chessBoard.board[1][8].pieceType.equals(Piece.PieceType.ROOK) && chessBoard.board[1][6] == null && chessBoard.board[1][7] == null) {
                 boolean canCastle = true;
                 for(Move move : validMoves) {
                     if(move.piece.color == Piece.Color.BLACK && (move.destination.chessLingo.equals("e1") || 
@@ -1757,7 +1797,7 @@ public class PlayChess {
                     validMoves.add(new Move(chessBoard.board[1][5], new BoardLocation("g1"), false, Move.SpecialMove.CASTLE_KINGSIDE));
                 }
             }
-            if(chessBoard.whiteCanCastleQ && chessBoard.board[1][4] == null && chessBoard.board[1][3] == null && chessBoard.board[1][2] == null) {
+            if(chessBoard.whiteCanCastleQ && chessBoard.board[1][5] != null && chessBoard.board[1][5].pieceType.equals(Piece.PieceType.KING) && chessBoard.board[1][1] != null && chessBoard.board[1][1].pieceType.equals(Piece.PieceType.ROOK) && chessBoard.board[1][4] == null && chessBoard.board[1][3] == null && chessBoard.board[1][2] == null) {
                 boolean canCastle = true;
                 for(Move move : validMoves) {
                     if(move.piece.color == Piece.Color.BLACK && (move.destination.chessLingo.equals("e1") ||
@@ -1772,7 +1812,7 @@ public class PlayChess {
             }
         }
         else {
-            if(chessBoard.blackCanCastleK && chessBoard.board[8][6] == null && chessBoard.board[8][7] == null) {
+            if(chessBoard.blackCanCastleK && chessBoard.board[8][5] != null && chessBoard.board[8][5].pieceType.equals(Piece.PieceType.KING) && chessBoard.board[8][8] != null && chessBoard.board[8][8].pieceType.equals(Piece.PieceType.ROOK) && chessBoard.board[8][6] == null && chessBoard.board[8][7] == null) {
                 boolean canCastle = true;
                 for(Move move : validMoves) {
                     if(move.piece.color == Piece.Color.WHITE && (move.destination.chessLingo.equals("e8") ||
@@ -1785,7 +1825,7 @@ public class PlayChess {
                     validMoves.add(new Move(chessBoard.board[1][5], new BoardLocation("g8"), false, Move.SpecialMove.CASTLE_KINGSIDE));
                 }
             }
-            if(chessBoard.blackCanCastleQ && chessBoard.board[8][4] == null && chessBoard.board[8][3] == null && chessBoard.board[8][2] == null) {
+            if(chessBoard.blackCanCastleQ && chessBoard.board[8][5] != null && chessBoard.board[8][5].pieceType.equals(Piece.PieceType.KING) && chessBoard.board[8][1] != null && chessBoard.board[8][1].pieceType.equals(Piece.PieceType.ROOK) && chessBoard.board[8][4] == null && chessBoard.board[8][3] == null && chessBoard.board[8][2] == null) {
                 boolean canCastle = true;
                 for(Move move : validMoves) {
                     if(move.piece.color == Piece.Color.WHITE && (move.destination.chessLingo.equals("e8") ||

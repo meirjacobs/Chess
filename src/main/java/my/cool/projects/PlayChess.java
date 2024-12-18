@@ -383,7 +383,7 @@ public class PlayChess {
                 }
             }
         }
-        executorService.shutdown();
+        if(multithreaded) executorService.shutdown();
     }
 
     private static boolean validMove(Piece piece, int moveToRow, int moveToColumn, boolean capture, boolean printErrors) {
@@ -1414,6 +1414,13 @@ public class PlayChess {
         Move bestMove = null;
 
         List<Move> legalMoves = generateLegalMoves(board, computerPlayAs);
+        for(Move move : legalMoves) {
+            BeforeMoveState prev = computerMakeMove(board, move);
+            if(boardMap.getOrDefault(board.board, 0) > 2) {
+                move.causesDraw = true;
+            }
+            computerUndoMove(board, move, prev);
+        }
 
         if(multithreaded) {
             try {
@@ -1430,7 +1437,7 @@ public class PlayChess {
                     Future<Double> future = executorService.submit(() -> {
                         BeforeMoveState prev = computerMakeMove(boardCopy, move);
                         long start = System.nanoTime();
-                        double score = minimax(boardCopy, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
+                        double score = minimax(boardCopy, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn, move.causesDraw);
                         long end = System.nanoTime();
                         System.out.println((end - start) / 1000000000.0 + " nanoseconds");
                         computerUndoMove(boardCopy, move, prev);
@@ -1464,7 +1471,7 @@ public class PlayChess {
         else {
             for(Move move : legalMoves) {
                 BeforeMoveState prev = computerMakeMove(board, move);
-                double score = minimax(board, computerDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn);
+                double score = minimax(board, computerDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, !whiteTurn, move.causesDraw);
                 computerUndoMove(board, move, prev);
                 if (whiteTurn) {
                     if (score > bestScore) {
@@ -1489,9 +1496,6 @@ public class PlayChess {
                 chessBoard.board[1][7] = move.piece;
                 chessBoard.board[1][6] = chessBoard.board[1][8];
                 chessBoard.board[1][7].boardLocation = new BoardLocation(1, 7);
-                if(chessBoard.board[1][6]==null) {
-                    int a = 8;
-                }
                 chessBoard.board[1][6].boardLocation = new BoardLocation(1, 6);
                 chessBoard.board[1][8] = null;
                 chessBoard.board[1][5] = null;
@@ -1654,13 +1658,14 @@ public class PlayChess {
         chessBoard.blackCanCastleQ = prev.prevBlackCanCastleQ;
     }
 
-    private static double minimax(Board board, double depth, double alpha, double beta, boolean whiteMove) {
+    private static double minimax(Board board, double depth, double alpha, double beta, boolean whiteMove, boolean causesDraw) {
 //        if (System.nanoTime() - nanoTimeStart > 1043883535L) {
 //            System.out.println(depth + " depth");
 //            return evaluateBoard(board);
 //        }
+
         if(depth <= 0 || (depth < 1 && random.nextFloat() > depth)) {
-            return evaluateBoard(board);
+            return evaluateBoard(board, causesDraw);
         }
         if (whiteMove) {
             double maxScore = Integer.MIN_VALUE;
@@ -1669,7 +1674,7 @@ public class PlayChess {
             for (Move move : legalMoves) {
                 BeforeMoveState prev = computerMakeMove(board, move);
 //                double score = minimax(board, depth + 1, nanoTimeStart, alpha, beta, false);
-                double score = minimax(board, depth - 1, alpha, beta, false);
+                double score = minimax(board, depth - 1, alpha, beta, false, move.causesDraw);
                 computerUndoMove(board, move, prev);
                 maxScore = Math.max(maxScore, score);
                 alpha = Math.max(alpha, score);
@@ -1686,7 +1691,7 @@ public class PlayChess {
             for (Move move : legalMoves) {
                 BeforeMoveState prev = computerMakeMove(board, move);
 //                double score = minimax(board, depth + 1, nanoTimeStart, alpha, beta, true);
-                double score = minimax(board, depth - 1, alpha, beta, true);
+                double score = minimax(board, depth - 1, alpha, beta, true, move.causesDraw);
                 computerUndoMove(board, move, prev);
                 minScore = Math.min(minScore, score);
                 beta = Math.min(beta, score);
@@ -1699,8 +1704,9 @@ public class PlayChess {
         }
     }
 
-    private static double evaluateBoard(Board board) {
-        // Measure: score
+    private static double evaluateBoard(Board board, boolean causesDraw) {
+        // TODO: Encourage castling
+        if(causesDraw) return 0.0;
         double score = measureBoardScore(board);
         double spacing = measureSpacing(board);
         return score + spacing;
@@ -1919,6 +1925,7 @@ public class PlayChess {
         boolean capture;
         SpecialMove special;
         Piece.PieceType promotionType;
+        boolean causesDraw;
         public Move(Piece piece, BoardLocation destination, boolean capture) {
             this.piece = piece;
             this.originalLocation = new BoardLocation(piece.boardLocation.chessLingo);
@@ -1934,6 +1941,10 @@ public class PlayChess {
         public Move(Piece piece, BoardLocation destination, boolean capture, SpecialMove special, Piece.PieceType promotionType) {
             this(piece, destination, capture, special);
             this.promotionType = promotionType;
+        }
+
+        public void setCausesDraw(boolean causesDraw) {
+            this.causesDraw = causesDraw;
         }
 
         public enum SpecialMove {EN_PASSANT, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, PROMOTION}
